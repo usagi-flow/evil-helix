@@ -28,7 +28,7 @@ type Signals = futures_util::stream::Empty<()>;
 
 pub struct Application {
     compositor: Compositor,
-    editor: Editor,
+    pub editor: Editor,
 
     // TODO should be separate to take only part of the config
     config: Config,
@@ -156,7 +156,7 @@ impl Application {
             scroll: None,
         };
 
-        compositor.render(&mut cx);
+        // compositor.render(&mut cx);
     }
 
     pub async fn event_loop(&mut self) {
