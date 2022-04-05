@@ -1,3 +1,25 @@
+# 22.05 (UNRELEASED)
+
+We had X contributors in this release.
+
+Breaking Changes: []
+
+Features: []
+
+Commands: []
+
+Usability improvements and fixes: []
+
+Themes: []
+
+LSP: []
+
+New Languages: []
+
+Updated Languages and Queries: []
+
+Packaging
+
 # 22.03 (2022-03-28)
 
 A big shout out to all the contributors! We had 51 contributors in this release.
