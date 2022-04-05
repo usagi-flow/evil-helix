@@ -1,24 +1,60 @@
 # 22.05 (UNRELEASED)
 
+> Checkpoint: `6b80cb8a7750885abf761d1b65e5c0065ae1640b`
+
 We had X contributors in this release.
 
-Breaking Changes: []
+Breaking Changes:
 
-Features: []
+- Removed `C-j`, `C-k` bindings from file picker (#1792)
+- Replaced `C-f` with `C-d` and `C-b` with `C-u` bindings in file picker (#1792)
 
-Commands: []
+Features:
 
-Usability improvements and fixes: []
+- The indentation mechanism has been reworked (#1562, #1908)
 
-Themes: []
+Commands:
 
-LSP: []
+- Paragraph motion and textobject (`]p`, `[p`) (#1627, #1956)
+- `:buffer-next`, `:buffer-previous` (#1940)
+- `:set-language` to set the buffers language (#1866)
 
-New Languages: []
+Usability improvements and fixes:
 
-Updated Languages and Queries: []
+- Handle broken pipes when piping `hx --health` through `head` (#1876)
+- Fix for `copy_selection` on newlines (ab7885e, 236c6b7)
+- Use `win32yank` clipboard provider on WSL2 (#1912)
+- Jump to the next number on the line before incrementing (#1778)
+- Fix start position of next search (#1904)
+- Use check and X marks for health check output (#1918)
+- Clear terminal after switching to alternate screens (#1944)
+- Fix `toggle_comments` command on multiple selections (#1882)
 
-Packaging
+Themes:
+
+- Remove `ui.text` background from dark_plus (#1950)
+
+LSP:
+
+- Pull LSP formatting options from config (c18de0e)
+- Provide `rootPath` (84e799f)
+- Implement `workspace_folders` (8adf0c1)
+- Use texlab for latex (#1922)
+
+New Languages:
+
+- JSX (#1906, a24fb17, 855e438, #1921)
+
+Updated Languages and Queries:
+
+- Erlang (e2a5071)
+- Elixir (1819478)
+- Gleam (7cd6050)
+- Bash (#1917)
+
+Packaging:
+
+- Use `builtins.fromTOML` in Nix Flake on Nix 2.6+ (#1892)
 
 # 22.03 (2022-03-28)
 
