@@ -1,6 +1,6 @@
 # 22.05 (UNRELEASED)
 
-> Checkpoint: `6b80cb8a7750885abf761d1b65e5c0065ae1640b`
+> Checkpoint: `14079bd17b18296ef787e4a0304505992142b584`
 
 We had X contributors in this release.
 
@@ -15,9 +15,10 @@ Features:
 
 Commands:
 
-- Paragraph motion and textobject (`]p`, `[p`) (#1627, #1956)
+- Paragraph motion and textobject (`]p`, `[p`) (#1627, #1956, #1969)
 - `:buffer-next`, `:buffer-previous` (#1940)
 - `:set-language` to set the buffers language (#1866)
+- Command for picking files from the current working directory (`Space-F`) (#1600)
 
 Usability improvements and fixes:
 
@@ -33,6 +34,11 @@ Usability improvements and fixes:
 Themes:
 
 - Remove `ui.text` background from dark_plus (#1950)
+- Add `boo_berry` theme (#1962)
+- Update `dark_plus` markup colors (#1989)
+- Update `dark_plus` `tag` and `ui.menu.selected` colors (#2014)
+- Add `dracula_at_night` (#2008)
+- Improve `dracula` selection theming (#2077)
 
 LSP:
 
@@ -40,10 +46,21 @@ LSP:
 - Provide `rootPath` (84e799f)
 - Implement `workspace_folders` (8adf0c1)
 - Use texlab for latex (#1922)
+- HTML (#2018)
+- JSON (#2024)
+- CSS (#2025)
+- PHP (#2031)
+- Swift (#2033)
+- OCaml (#2035)
+- Vue (#2043)
 
 New Languages:
 
 - JSX (#1906, a24fb17, 855e438, #1921)
+- Rust Object Notation (RON) (#1925)
+- R and R Markdown (#1998)
+- Swift (#2033)
+- EJS and ERB (#2055)
 
 Updated Languages and Queries:
 
