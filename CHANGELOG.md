@@ -39,6 +39,12 @@ Usability improvements and fixes:
 - Apply `ui.gutter` theming to empty gutter spans (#2032)
 - Use checkboxes in `hx --health` output (#1947)
 - Pass unmapped keys through prompt regardless of modifiers (764adbd)
+- LSP: pull formatting options from config (c18de0e)
+- LSP: provide `rootPath` (84e799f)
+- LSP: implement `workspace_folders` (8adf0c1)
+- LSP: fix auto-import (#2088)
+- Send active diagnostic to LSP when requesting code actions (#2005)
+- Prevent panic when parsing malformed LSP `PublishDiagnostic` (#2160)
 
 Themes:
 
@@ -53,9 +59,6 @@ Themes:
 
 LSP:
 
-- Pull LSP formatting options from config (c18de0e)
-- Provide `rootPath` (84e799f)
-- Implement `workspace_folders` (8adf0c1)
 - Use texlab for latex (#1922)
 - HTML (#2018)
 - JSON (#2024)
@@ -64,9 +67,6 @@ LSP:
 - Swift (#2033)
 - OCaml (#2035)
 - Vue (#2043)
-- Fix LSP auto-import (#2088)
-- Send active diagnostic to LSP when requesting code actions (#2005)
-- Prevent panic when parsing malformed LSP `PublishDiagnostic` (#2160)
 
 New Languages:
 
