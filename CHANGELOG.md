@@ -1,6 +1,6 @@
 # 22.05 (UNRELEASED)
 
-> Checkpoint: `14079bd17b18296ef787e4a0304505992142b584`
+> Checkpoint: `015a582d44a802bd1b983c88d737a7c290f87b22`
 
 We had X contributors in this release.
 
@@ -12,13 +12,19 @@ Breaking Changes:
 Features:
 
 - The indentation mechanism has been reworked (#1562, #1908)
+- Shell auto-completion files are now available (#2022)
+- Configurable gutters (#1967)
+- Support for local language configuration (#1249)
 
 Commands:
 
-- Paragraph motion and textobject (`]p`, `[p`) (#1627, #1956, #1969)
+- Paragraph motion and textobject (`]p`, `[p`) (#1627, #1956, #1969, #1992)
 - `:buffer-next`, `:buffer-previous` (#1940)
-- `:set-language` to set the buffers language (#1866)
+- `:set-language` to set the buffers language (#1866, #1996)
 - Command for picking files from the current working directory (`Space-F`) (#1600)
+- `:write!` which creates non-existent subdirectories (#1839)
+- `:pipe` typable command for piping selections (#1972)
+- `extend_line_above` which extends to previous lines (#2117)
 
 Usability improvements and fixes:
 
@@ -30,6 +36,9 @@ Usability improvements and fixes:
 - Use check and X marks for health check output (#1918)
 - Clear terminal after switching to alternate screens (#1944)
 - Fix `toggle_comments` command on multiple selections (#1882)
+- Apply `ui.gutter` theming to empty gutter spans (#2032)
+- Use checkboxes in `hx --health` output (#1947)
+- Pass unmapped keys through prompt regardless of modifiers (764adbd)
 
 Themes:
 
@@ -39,6 +48,8 @@ Themes:
 - Update `dark_plus` `tag` and `ui.menu.selected` colors (#2014)
 - Add `dracula_at_night` (#2008)
 - Improve `dracula` selection theming (#2077)
+- Remove dim attribute on `onedark` line-number gutter (#2155)
+- Add `tokyonight` (#2162)
 
 LSP:
 
@@ -53,6 +64,9 @@ LSP:
 - Swift (#2033)
 - OCaml (#2035)
 - Vue (#2043)
+- Fix LSP auto-import (#2088)
+- Send active diagnostic to LSP when requesting code actions (#2005)
+- Prevent panic when parsing malformed LSP `PublishDiagnostic` (#2160)
 
 New Languages:
 
@@ -61,13 +75,20 @@ New Languages:
 - R and R Markdown (#1998)
 - Swift (#2033)
 - EJS and ERB (#2055)
+- EEx (9d095e0)
+- HEEx (4836bb3, #2149)
+- SQL (#2097)
+- GDScript (#1985)
 
 Updated Languages and Queries:
 
-- Erlang (e2a5071)
-- Elixir (1819478)
+- Erlang (e2a5071, #2149)
+- Elixir (1819478, 8c3c901, 4ac94a5)
 - Gleam (7cd6050)
 - Bash (#1917)
+- JavaScript (#2140)
+- Ruby textobject queries (#2143)
+- Fix Golang textobject queries (#2153)
 
 Packaging:
 
