@@ -1,6 +1,6 @@
 # 22.05 (UNRELEASED)
 
-> Checkpoint: `015a582d44a802bd1b983c88d737a7c290f87b22`
+> Checkpoint: `8eb15f52835c3669a5d5f0539a13f415a8a71856`
 
 We had X contributors in this release.
 
@@ -15,16 +15,20 @@ Features:
 - Shell auto-completion files are now available (#2022)
 - Configurable gutters (#1967)
 - Support for local language configuration (#1249)
+- Configurable themed rulers (#2060)
+- Render visible whitespace (e6b865e)
 
 Commands:
 
-- Paragraph motion and textobject (`]p`, `[p`) (#1627, #1956, #1969, #1992)
+- Paragraph motion and textobject (`]p`, `[p`) (#1627, #1956, #1969, #1992, #2226)
 - `:buffer-next`, `:buffer-previous` (#1940)
 - `:set-language` to set the buffers language (#1866, #1996)
 - Command for picking files from the current working directory (`Space-F`) (#1600)
 - `:write!` which creates non-existent subdirectories (#1839)
 - `:pipe` typable command for piping selections (#1972)
 - `extend_line_above` which extends to previous lines (#2117)
+- `set_line_ending` which replaces line endings (#1871)
+- `:get-option` for getting the current value of an option (`:get`) (#2231)
 
 Usability improvements and fixes:
 
@@ -45,17 +49,28 @@ Usability improvements and fixes:
 - LSP: fix auto-import (#2088)
 - Send active diagnostic to LSP when requesting code actions (#2005)
 - Prevent panic when parsing malformed LSP `PublishDiagnostic` (#2160)
+- Restore document state on completion cancel (#2096)
+- Only merge top-level array when merging `languages.toml` (#2145, #2215)
+- Fix open on multiline selection (#2161)
+- Allow re-binding `0` if it is not used in a count (#2174)
+- Fix `ctrl-u` behavior in insert mode (#1957)
+- Check LSP rename capabilities before sending rename action (#2203)
+- Register the `publish_diagnostics` LSP capability (#2241)
 
 Themes:
 
 - Remove `ui.text` background from dark_plus (#1950)
-- Add `boo_berry` theme (#1962)
+- Add `boo_berry` (#1962)
 - Update `dark_plus` markup colors (#1989)
 - Update `dark_plus` `tag` and `ui.menu.selected` colors (#2014)
 - Add `dracula_at_night` (#2008)
 - Improve `dracula` selection theming (#2077)
 - Remove dim attribute on `onedark` line-number gutter (#2155)
 - Add `tokyonight` (#2162)
+- Use border colors from the original `dark_plus` theme (#2186)
+- Add `autumn` (#2212, 2270)
+- Add `tokyonight_storm` (#2240)
+- Add `pop-dark` (#2240)
 
 LSP:
 
@@ -67,6 +82,8 @@ LSP:
 - Swift (#2033)
 - OCaml (#2035)
 - Vue (#2043)
+- Yaml (#2234)
+- Vala (#2243)
 
 New Languages:
 
@@ -79,6 +96,10 @@ New Languages:
 - HEEx (4836bb3, #2149)
 - SQL (#2097)
 - GDScript (#1985)
+- Nickel (#2173)
+- `go.mod` and `go.work` (#2197)
+- Nushell (#2225)
+- Vala (#2243)
 
 Updated Languages and Queries:
 
@@ -89,10 +110,13 @@ Updated Languages and Queries:
 - JavaScript (#2140)
 - Ruby textobject queries (#2143)
 - Fix Golang textobject queries (#2153)
+- Add more bash and HCL file extensions (#2201)
+- Divide HCL and tfvars into separate languages (#2244)
 
 Packaging:
 
 - Use `builtins.fromTOML` in Nix Flake on Nix 2.6+ (#1892)
+- Create an AppImage on release (#2089)
 
 # 22.03 (2022-03-28)
 
