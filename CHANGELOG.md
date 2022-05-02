@@ -1,13 +1,15 @@
 # 22.05 (UNRELEASED)
 
-> Checkpoint: `8eb15f52835c3669a5d5f0539a13f415a8a71856`
+> Checkpoint: `ac2ea800ce267b9ed3da5f743085f0afe8460473`
 
-We had X contributors in this release.
+Contributors in this release: `X`.
 
 Breaking Changes:
 
 - Removed `C-j`, `C-k` bindings from file picker (#1792)
 - Replaced `C-f` with `C-d` and `C-b` with `C-u` bindings in file picker (#1792)
+- `A-hjkl` bindings have been moved to `A-pion` (#2205)
+- `A-Left`/`A-Right` have been moved to `C-Left`/`C-Right` (#2193)
 
 Features:
 
@@ -16,19 +18,23 @@ Features:
 - Configurable gutters (#1967)
 - Support for local language configuration (#1249)
 - Configurable themed rulers (#2060)
-- Render visible whitespace (e6b865e)
+- Render visible whitespace (e6b865e, #2322, #2331)
+- Add `m` textobject that selects closest surrounding pair (de15d70, 76175db)
 
 Commands:
 
 - Paragraph motion and textobject (`]p`, `[p`) (#1627, #1956, #1969, #1992, #2226)
 - `:buffer-next`, `:buffer-previous` (#1940)
 - `:set-language` to set the buffers language (#1866, #1996)
-- Command for picking files from the current working directory (`Space-F`) (#1600)
+- Command for picking files from the current working directory (`Space-F`) (#1600, #2308)
 - `:write!` which creates non-existent subdirectories (#1839)
 - `:pipe` typable command for piping selections (#1972)
 - `extend_line_above` which extends to previous lines (#2117)
 - `set_line_ending` which replaces line endings (#1871)
 - `:get-option` for getting the current value of an option (`:get`) (#2231)
+- `:run-shell-command` which does not interact with selections (#1682)
+- `:reflow` which hard-wraps selected text (#2128)
+- `commit_undo_checkpoint` which adds an undo checkpoint (#2115)
 
 Usability improvements and fixes:
 
@@ -56,6 +62,12 @@ Usability improvements and fixes:
 - Fix `ctrl-u` behavior in insert mode (#1957)
 - Check LSP rename capabilities before sending rename action (#2203)
 - Register the `publish_diagnostics` LSP capability (#2241)
+- Fix paste direction for typed paste commands (#2288)
+- Improve handling of buffer-close (#1397)
+- Extend the tutor file (#2133)
+- Treat slashes as word separators in prompts (#2315)
+- Auto-complete directory members (#1682)
+- Allow disabling format-on-save as a global editor setting (#2321)
 
 Themes:
 
@@ -71,6 +83,10 @@ Themes:
 - Add `autumn` (#2212, 2270)
 - Add `tokyonight_storm` (#2240)
 - Add `pop-dark` (#2240)
+- Fix `base16_terminal` theme using incorrect ansi-color (#2279)
+- Add `onelight` (#2287, #2323)
+- Add `ui.virtual` scopes to `onedark` theme (3626e38)
+- Add `night_owl` (#2330)
 
 LSP:
 
@@ -84,6 +100,7 @@ LSP:
 - Vue (#2043)
 - Yaml (#2234)
 - Vala (#2243)
+- TOML (#2302)
 
 New Languages:
 
@@ -96,10 +113,14 @@ New Languages:
 - HEEx (4836bb3, #2149)
 - SQL (#2097)
 - GDScript (#1985)
-- Nickel (#2173)
+- Nickel (#2173, #2320)
 - `go.mod` and `go.work` (#2197)
 - Nushell (#2225)
 - Vala (#2243)
+- Hare (#2289)
+- DeviceTree (#2329)
+- Cairo (7387905)
+- CPON (#2355)
 
 Updated Languages and Queries:
 
