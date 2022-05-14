@@ -146,8 +146,7 @@ impl EditorView {
             let border_style = theme.get("ui.window");
             for y in area.top()..area.bottom() {
                 surface[(x, y)]
-                    .set_symbol(tui::symbols::line::VERTICAL)
-                    //.set_symbol(" ")
+                    .set_symbol(tui::symbols::bar::EMPTY)
                     .set_style(border_style);
             }
         }
