@@ -1,8 +1,10 @@
 pub(crate) mod dap;
+pub(crate) mod evil;
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
+pub use evil::*;
 use helix_event::status;
 use helix_stdx::{
     path::expand_tilde,
@@ -517,6 +519,8 @@ impl MappableCommand {
         decrement, "Decrement item under cursor",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
+        evil_delete, "Delete (evil)",
+        evil_yank, "Yank (evil)",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
@@ -2469,7 +2473,7 @@ fn global_search(cx: &mut Context) {
     );
 }
 
-enum Extend {
+pub enum Extend {
     Above,
     Below,
 }
@@ -2636,7 +2640,7 @@ fn shrink_to_line_bounds(cx: &mut Context) {
     );
 }
 
-enum Operation {
+pub enum Operation {
     Delete,
     Change,
 }
@@ -2790,7 +2794,7 @@ fn ensure_selections_forward(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn enter_insert_mode(cx: &mut Context) {
+pub fn enter_insert_mode(cx: &mut Context) {
     cx.editor.mode = Mode::Insert;
 }
 
@@ -3558,7 +3562,7 @@ fn select_mode(cx: &mut Context) {
     cx.editor.mode = Mode::Select;
 }
 
-fn exit_select_mode(cx: &mut Context) {
+pub fn exit_select_mode(cx: &mut Context) {
     if cx.editor.mode == Mode::Select {
         cx.editor.mode = Mode::Normal;
     }
@@ -6193,4 +6197,12 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
         }
     }
     jump_to_label(cx, words, behaviour)
+}
+
+fn evil_delete(cx: &mut Context) {
+    EvilCommands::delete(cx, Operation::Delete);
+}
+
+fn evil_yank(cx: &mut Context) {
+    EvilCommands::yank(cx);
 }
