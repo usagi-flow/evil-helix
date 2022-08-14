@@ -519,8 +519,11 @@ impl MappableCommand {
         decrement, "Decrement item under cursor",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
+        evil_prev_word_start, "Previous word start (evil)",
+        evil_next_word_start, "Next word start (evil)",
         evil_delete, "Delete (evil)",
         evil_yank, "Yank (evil)",
+        evil_clear, "Clear (evil)",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
@@ -6199,10 +6202,22 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     jump_to_label(cx, words, behaviour)
 }
 
+fn evil_prev_word_start(cx: &mut Context) {
+    EvilCommands::prev_word_start(cx);
+}
+
+fn evil_next_word_start(cx: &mut Context) {
+    EvilCommands::next_word_start(cx);
+}
+
 fn evil_delete(cx: &mut Context) {
     EvilCommands::delete(cx, Operation::Delete);
 }
 
 fn evil_yank(cx: &mut Context) {
     EvilCommands::yank(cx);
+}
+
+fn evil_clear(cx: &mut Context) {
+    EvilCommands::clear(cx);
 }
