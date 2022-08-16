@@ -5,10 +5,12 @@ use std::{
 };
 
 use helix_core::{Range, Selection, Transaction};
-use helix_view::input::KeyEvent;
+use helix_view::{document::Mode, input::KeyEvent};
 use once_cell::sync::Lazy;
 
 use crate::commands::{enter_insert_mode, exit_select_mode, Context, Extend, Operation};
+
+use super::select_mode;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Command {
@@ -64,6 +66,7 @@ struct EvilContext {
     command: Option<Command>,
     motion: Option<Motion>,
     count: Option<usize>,
+    set_mode: Option<Mode>,
 }
 
 impl EvilContext {
@@ -71,6 +74,7 @@ impl EvilContext {
         self.command = None;
         self.motion = None;
         self.count = None;
+        self.set_mode = None;
     }
 }
 
@@ -79,6 +83,7 @@ static CONTEXT: Lazy<RwLock<EvilContext>> = Lazy::new(|| {
         command: None,
         motion: None,
         count: None,
+        set_mode: None,
     })
 });
 
@@ -102,6 +107,11 @@ impl EvilCommands {
 
     fn context_mut() -> RwLockWriteGuard<'static, EvilContext> {
         return CONTEXT.write().unwrap();
+    }
+
+    fn get_mode(cx: &mut Context) -> Mode {
+        let (_view, doc) = current!(cx.editor);
+        return doc.mode();
     }
 
     pub fn prev_word_start(_cx: &mut Context) {}
@@ -194,89 +204,108 @@ impl EvilCommands {
         }
     }
 
-    pub fn yank(cx: &mut Context) {
-        let command;
-        {
-            command = Self::context().command;
+    fn delete_selection(cx: &mut Context, selection: &Selection, set_status_message: bool) {
+        let selection = Self::get_selection(cx);
+
+        if let Some(selection) = selection {
+            if cx.register != Some('_') {
+                // first yank the selection
+                Self::yank_selection(cx, &selection, false);
+            };
+
+            let (view, doc) = current!(cx.editor);
+            let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+                (range.from(), range.to(), None)
+            });
+
+            doc.apply(&transaction, view.id);
         }
 
-        match command {
+        /*match op {
+            Operation::Delete => {
+                // exit select mode, if currently in select mode
+                exit_select_mode(cx);
+            }
+            Operation::Change => {
+                let (_view, doc) = current!(cx.editor);
+                enter_insert_mode(doc);
+            }
+        }*/
+    }
+
+    fn evil_command(cx: &mut Context, requested_command: Command, set_mode: Option<Mode>) {
+        let active_command;
+        {
+            active_command = Self::context().command;
+        }
+
+        match active_command {
             None => {
-                // The yank command is being initiated
+                // The command is being initiated
                 {
                     let mut evil_context = Self::context_mut();
-                    evil_context.command = Some(Command::Yank);
+                    evil_context.command = Some(requested_command);
                     evil_context.count = cx.count.map(|c| c.get());
+                    evil_context.set_mode = set_mode;
                 }
 
-                cx.on_next_key_callback = Some(Box::new(|cx: &mut Context, e: KeyEvent| {
-                    if let Some(command) = e.char().and_then(|c| Command::try_from(c).ok()) {
-                        // Assume this callback is called only if a command was initiated
-                        if command == Self::context().command.unwrap() {
-                            Self::trace(cx, "Key callback: Executing command");
-                            Self::yank(cx);
-                        } else {
-                            // A yank command was initiated, but another command was initiated.
-                            Self::trace(
-                                cx,
-                                "Key callback: Command interrupted due to another command",
-                            );
-                            Self::context_mut().reset();
-                            // TODO: proceed with initiating the other command?
-                        }
-                        return;
+                if Self::get_mode(cx) != Mode::Select {
+                    cx.on_next_key_callback =
+                        Some(Box::new(move |cx: &mut Context, e: KeyEvent| {
+                            Self::evil_command_key_callback(cx, e);
+                        }));
+
+                    if let Some(count) = Self::context().count {
+                        Self::trace(cx, format!("Command initiated with count {}", count));
+                    } else {
+                        Self::trace(cx, format!("Command initiated without count"));
                     }
-
-                    //cx.editor.set_status("next key callback invoked!");
-                    // TODO: handle count? (again?)
-                    if let Some(motion) = e.char().and_then(|c| Motion::try_from(c).ok()) {
-                        Self::trace(cx, "Key callback: Motion key detected");
-                        Self::context_mut().motion = Some(motion);
-                        return;
-                    }
-
-                    // TODO: better way to parse a char?
-                    if let Some(value) = e
-                        .char()
-                        .and_then(|c| usize::from_str_radix(c.to_string().as_str(), 10).ok())
-                    {
-                        Self::trace(cx, "Key callback: Increasing count");
-                        let mut evil_context = Self::context_mut();
-                        evil_context.count =
-                            Some(evil_context.count.map(|c| c * 10).unwrap_or(0) + value);
-                        return;
-                    }
-
-                    // A yank command was initiated, but an illegal motion was used: cancel the command.
-                    Self::trace(cx, "Key callback: Command interrupted");
-                    Self::context_mut().reset();
-                }));
-
-                if let Some(count) = Self::context().count {
-                    Self::trace(cx, format!("Command initiated with count {}", count));
                 } else {
-                    Self::trace(cx, format!("Command initiated without count"));
+                    // We're in the select mode, execute the command immediately.
+                    Self::evil_command(cx, requested_command, set_mode);
                 }
-
-                return; // TODO: remove this if redundant
             }
-            Some(command) if command == Command::Yank => {
-                // The yank command is being executed
+            Some(active_command) if active_command == requested_command => {
+                // The command is being executed
                 let selection = Self::get_selection(cx);
 
                 if let Some(selection) = selection {
-                    Self::yank_selection(cx, &selection, true);
+                    // TODO: use accessor to obtain the function
+                    match active_command {
+                        Command::Yank => {
+                            Self::yank_selection(cx, &selection, true);
+                        }
+                        Command::Delete => {
+                            Self::delete_selection(cx, &selection, true);
+                        }
+                    }
                 }
 
-                exit_select_mode(cx);
+                let set_mode = Self::context().set_mode;
+                if let Some(mode) = set_mode {
+                    match mode {
+                        Mode::Normal => {
+                            exit_select_mode(cx);
+                        }
+                        Mode::Insert => {
+                            let (_view, doc) = current!(cx.editor);
+                            enter_insert_mode(doc);
+                        }
+                        Mode::Select => {
+                            select_mode(cx);
+                        }
+                    }
+                } else {
+                    exit_select_mode(cx);
+                }
 
                 // The command was executed, reset the context.
                 Self::context_mut().reset();
 
-                Self::trace(cx, "Command executed");
+                //Self::trace(cx, "Command executed");
             }
             _ => {
-                // A yank command was initiated, but another one was executed: cancel the command.
+                // A command was initiated, but another one was executed: cancel the command.
                 Self::context_mut().reset();
 
                 Self::trace(cx, "Command reset");
@@ -284,10 +313,74 @@ impl EvilCommands {
         }
     }
 
+    fn evil_command_key_callback(cx: &mut Context, e: KeyEvent) {
+        let active_command;
+        let set_mode;
+        {
+            let context = Self::context();
+            active_command = context.command.unwrap();
+            set_mode = context.set_mode;
+        }
+
+        // Is the command being executed?
+        if let Some(command) = e.char().and_then(|c| Command::try_from(c).ok()) {
+            // Assume this callback is called only if a command was initiated
+            if command == active_command {
+                Self::trace(cx, "Key callback: Executing command");
+                Self::evil_command(cx, active_command, set_mode);
+            } else {
+                // A command was initiated, but another command was initiated.
+                Self::trace(
+                    cx,
+                    "Key callback: Command interrupted due to another command",
+                );
+                Self::context_mut().reset();
+                // TODO: proceed with initiating the other command?
+            }
+            return;
+        }
+
+        // Is the command being executed with a motion key?
+        if let Some(motion) = e.char().and_then(|c| Motion::try_from(c).ok()) {
+            Self::trace(cx, "Key callback: Motion key detected");
+            Self::context_mut().motion = Some(motion);
+            // TODO; a motion key should immediately execute the command
+            return;
+        }
+
+        // Is the command receiving a new/increased count?
+        // TODO: better way to parse a char?
+        if let Some(value) = e
+            .char()
+            .and_then(|c| usize::from_str_radix(c.to_string().as_str(), 10).ok())
+        {
+            Self::trace(cx, "Key callback: Increasing count");
+            let mut evil_context = Self::context_mut();
+            evil_context.count = Some(evil_context.count.map(|c| c * 10).unwrap_or(0) + value);
+            return;
+        }
+
+        // A command was initiated, but an illegal motion was used: cancel the command.
+        Self::trace(cx, "Key callback: Command interrupted");
+        Self::context_mut().reset();
+    }
+
+    pub fn yank(cx: &mut Context) {
+        Self::evil_command(cx, Command::Yank, None);
+    }
+
     /// Delete one or more lines, or delete the selected text.
     /// Default: *dd or d*d
     pub fn delete(cx: &mut Context, op: Operation) {
-        let selection = Self::get_selection(cx);
+        Self::evil_command(
+            cx,
+            Command::Delete,
+            Some(match op {
+                Operation::Delete => Mode::Normal,
+                Operation::Change => Mode::Insert,
+            }),
+        );
+        /*let selection = Self::get_selection(cx);
 
         if let Some(selection) = selection {
             if cx.register != Some('_') {
@@ -312,7 +405,7 @@ impl EvilCommands {
                 let (_view, doc) = current!(cx.editor);
                 enter_insert_mode(doc);
             }
-        }
+        }*/
     }
 
     pub fn delete_to_eol() {}
