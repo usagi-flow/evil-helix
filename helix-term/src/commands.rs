@@ -3544,7 +3544,7 @@ fn goto_last_modified_file(cx: &mut Context) {
     }
 }
 
-fn select_mode(cx: &mut Context) {
+pub fn select_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
