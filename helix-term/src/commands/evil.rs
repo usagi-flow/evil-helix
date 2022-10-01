@@ -1,6 +1,5 @@
 use std::{
     borrow::Cow,
-    num::NonZeroUsize,
     sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
@@ -110,8 +109,7 @@ impl EvilCommands {
     }
 
     fn get_mode(cx: &mut Context) -> Mode {
-        let (_view, doc) = current!(cx.editor);
-        return doc.mode();
+        return cx.editor.mode();
     }
 
     pub fn prev_word_start(_cx: &mut Context) {}
@@ -123,7 +121,7 @@ impl EvilCommands {
 
         let mut selection: Option<Selection> = None;
 
-        match doc.mode {
+        match cx.editor.mode {
             helix_view::document::Mode::Normal => {
                 // TODO: even in Normal mode, there can be a selection -> should it be disregarded,
                 // or can we assume this shouldn't happen in evil mode?
@@ -288,8 +286,7 @@ impl EvilCommands {
                             exit_select_mode(cx);
                         }
                         Mode::Insert => {
-                            let (_view, doc) = current!(cx.editor);
-                            enter_insert_mode(doc);
+                            enter_insert_mode(cx);
                         }
                         Mode::Select => {
                             select_mode(cx);
