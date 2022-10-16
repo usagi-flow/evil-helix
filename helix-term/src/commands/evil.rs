@@ -44,7 +44,6 @@ enum Motion {
     NextWordStart,
     LineStart,
     LineEnd,
-    Invalid,
 }
 
 impl TryFrom<char> for Motion {
@@ -125,38 +124,24 @@ impl EvilCommands {
             helix_view::document::Mode::Normal => {
                 // TODO: even in Normal mode, there can be a selection -> should it be disregarded,
                 // or can we assume this shouldn't happen in evil mode?
+                // -> In Vim, this wouldn't be possible, so for now, let's assume this case doesn't exist and correct
+                // this elsewhere later on if necessary.
 
                 // TODO: recognize motion keys like w and b
                 // TODO: see https://github.com/helix-editor/helix/blob/823eaad1a118e8865a6400afc22d37e060783d45/helix-term/src/ui/editor.rs#L1331-L1372
 
-                // Process a number of lines: first create a temporary selection of the text to be processed
-                let lines_to_select = Self::context().count.unwrap_or(1);
-
-                let text = doc.text();
-                let extend = Extend::Below;
-                selection = Some(doc.selection(view.id).clone().transform(|range| {
-                    let (start_line, end_line) = range.line_range(text.slice(..));
-
-                    let start = text.line_to_char(start_line);
-                    let end = text.line_to_char((end_line + lines_to_select).min(text.len_lines()));
-
-                    // Extend to previous/next line if current line is selected
-                    let (anchor, head) = if range.from() == start && range.to() == end {
-                        match extend {
-                            Extend::Above => (end, text.line_to_char(start_line.saturating_sub(1))),
-                            Extend::Below => (
-                                start,
-                                text.line_to_char(
-                                    (end_line + lines_to_select).min(text.len_lines()),
-                                ),
-                            ),
-                        }
-                    } else {
-                        (start, end)
-                    };
-
-                    Range::new(anchor, head)
-                }));
+                if let Some(motion) = Self::context().motion.as_ref() {
+                    // A motion was specified: Select accordingly
+                    Self::trace(
+                        cx,
+                        "Motion keys are not supported yet, performing line-based selection",
+                    );
+                    // TODO
+                    selection = Some(Self::get_word_based_selection(cx, motion));
+                } else {
+                    // No motion was specified: Perform a line-based selection
+                    selection = Some(Self::get_line_based_selection(cx));
+                }
             }
             helix_view::document::Mode::Select => {
                 // Yank the selected text
@@ -168,6 +153,70 @@ impl EvilCommands {
         }
 
         return selection;
+    }
+
+    fn get_word_based_selection(cx: &mut Context, motion: &Motion) -> Selection {
+        let (view, doc) = current!(cx.editor);
+
+        let lines_to_select = Self::context().count.unwrap_or(1);
+
+        let text = doc.text();
+        let extend = Extend::Below;
+
+        // Process a number of lines: first create a temporary selection of the text to be processed
+        return doc.selection(view.id).clone().transform(|range| {
+            let (start_line, end_line) = range.line_range(text.slice(..));
+
+            let start = text.line_to_char(start_line);
+            let end = text.line_to_char((end_line + lines_to_select).min(text.len_lines()));
+
+            // Extend to previous/next line if current line is selected
+            let (anchor, head) = if range.from() == start && range.to() == end {
+                match extend {
+                    Extend::Above => (end, text.line_to_char(start_line.saturating_sub(1))),
+                    Extend::Below => (
+                        start,
+                        text.line_to_char((end_line + lines_to_select).min(text.len_lines())),
+                    ),
+                }
+            } else {
+                (start, end)
+            };
+
+            Range::new(anchor, head)
+        });
+    }
+
+    fn get_line_based_selection(cx: &mut Context) -> Selection {
+        let (view, doc) = current!(cx.editor);
+
+        let lines_to_select = Self::context().count.unwrap_or(1);
+
+        let text = doc.text();
+        let extend = Extend::Below;
+
+        // Process a number of lines: first create a temporary selection of the text to be processed
+        return doc.selection(view.id).clone().transform(|range| {
+            let (start_line, end_line) = range.line_range(text.slice(..));
+
+            let start = text.line_to_char(start_line);
+            let end = text.line_to_char((end_line + lines_to_select).min(text.len_lines()));
+
+            // Extend to previous/next line if current line is selected
+            let (anchor, head) = if range.from() == start && range.to() == end {
+                match extend {
+                    Extend::Above => (end, text.line_to_char(start_line.saturating_sub(1))),
+                    Extend::Below => (
+                        start,
+                        text.line_to_char((end_line + lines_to_select).min(text.len_lines())),
+                    ),
+                }
+            } else {
+                (start, end)
+            };
+
+            Range::new(anchor, head)
+        });
     }
 
     fn yank_selection(cx: &mut Context, selection: &Selection, set_status_message: bool) {
@@ -339,9 +388,10 @@ impl EvilCommands {
 
         // Is the command being executed with a motion key?
         if let Some(motion) = e.char().and_then(|c| Motion::try_from(c).ok()) {
-            Self::trace(cx, "Key callback: Motion key detected");
+            Self::trace(cx, "Key callback: Motion key detected, executing command");
             Self::context_mut().motion = Some(motion);
             // TODO; a motion key should immediately execute the command
+            Self::evil_command(cx, active_command, set_mode);
             return;
         }
 
@@ -354,6 +404,12 @@ impl EvilCommands {
             Self::trace(cx, "Key callback: Increasing count");
             let mut evil_context = Self::context_mut();
             evil_context.count = Some(evil_context.count.map(|c| c * 10).unwrap_or(0) + value);
+
+            // TODO: doesn't seem to work
+            cx.on_next_key_callback = Some(Box::new(move |cx: &mut Context, e: KeyEvent| {
+                Self::evil_command_key_callback(cx, e);
+            }));
+
             return;
         }
 
