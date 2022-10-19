@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    ops::ControlFlow,
     sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
@@ -158,32 +159,59 @@ impl EvilCommands {
     fn get_word_based_selection(cx: &mut Context, motion: &Motion) -> Selection {
         let (view, doc) = current!(cx.editor);
 
-        let lines_to_select = Self::context().count.unwrap_or(1);
-
-        let text = doc.text();
-        let extend = Extend::Below;
-
         // Process a number of lines: first create a temporary selection of the text to be processed
         return doc.selection(view.id).clone().transform(|range| {
-            let (start_line, end_line) = range.line_range(text.slice(..));
+            enum Direction {
+                Forward,
+                Backward,
+            }
 
-            let start = text.line_to_char(start_line);
-            let end = text.line_to_char((end_line + lines_to_select).min(text.len_lines()));
-
-            // Extend to previous/next line if current line is selected
-            let (anchor, head) = if range.from() == start && range.to() == end {
-                match extend {
-                    Extend::Above => (end, text.line_to_char(start_line.saturating_sub(1))),
-                    Extend::Below => (
-                        start,
-                        text.line_to_char((end_line + lines_to_select).min(text.len_lines())),
-                    ),
-                }
-            } else {
-                (start, end)
+            let direction = match motion {
+                Motion::NextWordStart => Direction::Forward,
+                Motion::PrevWordStart => Direction::Backward,
+                _ => panic!("Invalid motion"),
             };
 
-            Range::new(anchor, head)
+            let start_char_idx: usize = range.anchor;
+            let mut end_char_idx = start_char_idx;
+
+            let text = doc.text();
+
+            // TODO: O(log(n)
+            let chars = match direction {
+                Direction::Forward => text.chars().skip(start_char_idx),
+                Direction::Backward => text
+                    .chars()
+                    .reversed() // TODO: doesn't work, we should first skip, then reverse
+                    .skip(text.len_chars() - 1 - start_char_idx),
+            };
+
+            log::info!(
+                "- Scanning {} out of {} characters, starting at {}",
+                text.chars().reversed().count(),
+                //chars.clone().count(),
+                text.len_chars(),
+                start_char_idx
+            );
+
+            for c in chars {
+                if c.is_whitespace() {
+                    log::info!("  - Whitespace detected at: {}", end_char_idx);
+                    break;
+                }
+
+                log::info!("  - Character at {}: {}", end_char_idx, c);
+
+                end_char_idx = match direction {
+                    Direction::Forward => end_char_idx + 1,
+                    Direction::Backward => end_char_idx.saturating_sub(1),
+                };
+            }
+
+            end_char_idx = end_char_idx.min(text.len_chars());
+
+            log::info!("- Selecting range: {}..{}", start_char_idx, end_char_idx);
+            return Range::new(start_char_idx, end_char_idx);
         });
     }
 
@@ -199,8 +227,8 @@ impl EvilCommands {
         return doc.selection(view.id).clone().transform(|range| {
             let (start_line, end_line) = range.line_range(text.slice(..));
 
-            let start = text.line_to_char(start_line);
-            let end = text.line_to_char((end_line + lines_to_select).min(text.len_lines()));
+            let start: usize = text.line_to_char(start_line);
+            let end: usize = text.line_to_char((end_line + lines_to_select).min(text.len_lines()));
 
             // Extend to previous/next line if current line is selected
             let (anchor, head) = if range.from() == start && range.to() == end {
@@ -231,7 +259,7 @@ impl EvilCommands {
         let selections = values.len();
         register.write(values);
 
-        if set_status_message {
+        /*if set_status_message {
             let message;
             if selections == 1 {
                 message = format!(
@@ -248,7 +276,7 @@ impl EvilCommands {
             }
 
             cx.editor.set_status(message);
-        }
+        }*/
     }
 
     fn delete_selection(cx: &mut Context, selection: &Selection, set_status_message: bool) {
