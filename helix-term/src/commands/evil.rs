@@ -453,8 +453,9 @@ impl EvilCommands {
         Self::evil_command(cx, Command::Yank, None);
     }
 
-    /// Delete one or more lines, or delete the selected text.
-    /// Default: *dd or d*d
+    /// Delete/change one or more lines, words, or delete the selected text.
+    /// If the operation is `Operation::Change`, change to insert mode after deletion.
+    /// Example: *dd or d*d, cw, cc, C, ...
     pub fn delete(cx: &mut Context, op: Operation) {
         Self::evil_command(
             cx,
@@ -464,48 +465,5 @@ impl EvilCommands {
                 Operation::Change => Mode::Insert,
             }),
         );
-        /*let selection = Self::get_selection(cx);
-
-        if let Some(selection) = selection {
-            if cx.register != Some('_') {
-                // first yank the selection
-                Self::yank_selection(cx, &selection, false);
-            };
-
-            let (view, doc) = current!(cx.editor);
-            let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
-                (range.from(), range.to(), None)
-            });
-
-            doc.apply(&transaction, view.id);
-        }
-
-        match op {
-            Operation::Delete => {
-                // exit select mode, if currently in select mode
-                exit_select_mode(cx);
-            }
-            Operation::Change => {
-                let (_view, doc) = current!(cx.editor);
-                enter_insert_mode(doc);
-            }
-        }*/
     }
-
-    pub fn delete_to_eol() {}
-
-    /// Delete the character underneath/to the right of the cursor.
-    /// Default: x
-    pub fn delete_char() {}
-
-    /// Delete the character left of the cursor.
-    /// Default: X
-    pub fn delete_char_left() {}
-
-    /// Clear text and switch to insert mode.
-    /// In normal mode, first wait for a character to indicate what should be deleted:
-    /// - c: whole line
-    /// - w: word
-    /// In selection mode, clear the selected text.
-    pub fn clear(_cx: &mut Context) {}
 }
