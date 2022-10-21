@@ -1,10 +1,13 @@
 use std::{
     borrow::Cow,
-    ops::ControlFlow,
     sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use helix_core::{Range, Selection, Transaction};
+use helix_core::{
+    movement::move_next_word_end,
+    movement::{is_word_boundary, move_prev_word_start},
+    Range, Selection, Transaction,
+};
 use helix_view::{document::Mode, input::KeyEvent};
 use once_cell::sync::Lazy;
 
@@ -40,9 +43,10 @@ impl TryFrom<char> for Command {
     }
 }
 
+#[derive(Eq, PartialEq)]
 enum Motion {
     PrevWordStart,
-    NextWordStart,
+    NextWordEnd,
     LineStart,
     LineEnd,
 }
@@ -52,7 +56,7 @@ impl TryFrom<char> for Motion {
 
     fn try_from(value: char) -> Result<Self, Self::Error> {
         match value {
-            'w' => Ok(Motion::NextWordStart),
+            'w' => Ok(Motion::NextWordEnd),
             'b' => Ok(Motion::PrevWordStart),
             '$' => Ok(Motion::LineEnd),
             '0' => Ok(Motion::LineStart),
@@ -159,59 +163,62 @@ impl EvilCommands {
     fn get_word_based_selection(cx: &mut Context, motion: &Motion) -> Selection {
         let (view, doc) = current!(cx.editor);
 
-        // Process a number of lines: first create a temporary selection of the text to be processed
+        // For each cursor, select one or more words forward or backward according
+        // to the count in the evil context and the motion respectively.
         return doc.selection(view.id).clone().transform(|range| {
-            enum Direction {
-                Forward,
-                Backward,
-            }
-
-            let direction = match motion {
-                Motion::NextWordStart => Direction::Forward,
-                Motion::PrevWordStart => Direction::Backward,
+            let forward = match motion {
+                Motion::NextWordEnd => true,
+                Motion::PrevWordStart => false,
                 _ => panic!("Invalid motion"),
             };
 
-            let start_char_idx: usize = range.anchor;
-            let mut end_char_idx = start_char_idx;
+            let text = doc.text().slice(..);
 
-            let text = doc.text();
-
-            // TODO: O(log(n)
-            let chars = match direction {
-                Direction::Forward => text.chars().skip(start_char_idx),
-                Direction::Backward => text
-                    .chars()
-                    .reversed() // TODO: doesn't work, we should first skip, then reverse
-                    .skip(text.len_chars() - 1 - start_char_idx),
+            let char_current = text.char(range.anchor);
+            let char_previous = match range.anchor > 0 {
+                true => Some(text.char(range.anchor - 1)),
+                false => None,
+            };
+            let char_next = match range.anchor < text.len_chars() - 1 {
+                true => Some(text.char(range.anchor + 1)),
+                false => None,
             };
 
-            log::info!(
-                "- Scanning {} out of {} characters, starting at {}",
-                text.chars().reversed().count(),
-                //chars.clone().count(),
-                text.len_chars(),
-                start_char_idx
-            );
+            let mut count = Self::context().count.unwrap_or(1);
 
-            for c in chars {
-                if c.is_whitespace() {
-                    log::info!("  - Whitespace detected at: {}", end_char_idx);
-                    break;
-                }
+            // Handle the special case where we're on the last character of a word and moving forwards,
+            // or on the first character of a word and moving backwards.
+            // Note that these special cases do not apply when we're between words.
 
-                log::info!("  - Character at {}: {}", end_char_idx, c);
-
-                end_char_idx = match direction {
-                    Direction::Forward => end_char_idx + 1,
-                    Direction::Backward => end_char_idx.saturating_sub(1),
-                };
+            if forward
+                && char_next.is_some()
+                && !char_current.is_whitespace()
+                && is_word_boundary(char_current, char_next.unwrap())
+            {
+                count -= 1;
             }
 
-            end_char_idx = end_char_idx.min(text.len_chars());
+            if !forward
+                && char_previous.is_some()
+                && !char_current.is_whitespace()
+                && is_word_boundary(char_current, char_previous.unwrap())
+            {
+                count -= 1;
+            }
 
-            log::info!("- Selecting range: {}..{}", start_char_idx, end_char_idx);
-            return Range::new(start_char_idx, end_char_idx);
+            // If we're selecting backwards, inverse the anchor and the head
+            // to ensure the current character is selected as well.
+            let anchor = match forward {
+                true => range.anchor.min(range.head),
+                false => range.anchor.max(range.head),
+            };
+
+            let range = match forward {
+                true => move_next_word_end(text, range, count),
+                false => move_prev_word_start(text, range, count),
+            };
+
+            Range::new(anchor, range.head)
         });
     }
 
@@ -247,7 +254,7 @@ impl EvilCommands {
         });
     }
 
-    fn yank_selection(cx: &mut Context, selection: &Selection, set_status_message: bool) {
+    fn yank_selection(cx: &mut Context, selection: &Selection, _set_status_message: bool) {
         let (_view, doc) = current!(cx.editor);
 
         let registers = &mut cx.editor.registers;
@@ -256,7 +263,7 @@ impl EvilCommands {
 
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
         let register = registers.get_mut(register_name);
-        let selections = values.len();
+        let _selections = values.len();
         register.write(values);
 
         /*if set_status_message {
@@ -279,22 +286,18 @@ impl EvilCommands {
         }*/
     }
 
-    fn delete_selection(cx: &mut Context, selection: &Selection, set_status_message: bool) {
-        let selection = Self::get_selection(cx);
+    fn delete_selection(cx: &mut Context, selection: &Selection, _set_status_message: bool) {
+        if cx.register != Some('_') {
+            // first yank the selection
+            Self::yank_selection(cx, &selection, false);
+        };
 
-        if let Some(selection) = selection {
-            if cx.register != Some('_') {
-                // first yank the selection
-                Self::yank_selection(cx, &selection, false);
-            };
+        let (view, doc) = current!(cx.editor);
+        let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+            (range.from(), range.to(), None)
+        });
 
-            let (view, doc) = current!(cx.editor);
-            let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
-                (range.from(), range.to(), None)
-            });
-
-            doc.apply(&transaction, view.id);
-        }
+        doc.apply(&transaction, view.id);
 
         /*match op {
             Operation::Delete => {
