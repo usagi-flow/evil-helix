@@ -6203,11 +6203,39 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
 }
 
 fn evil_prev_word_start(cx: &mut Context) {
-    EvilCommands::prev_word_start(cx);
+    // TODO: evil-specific implementation in evil.rs
+    //EvilCommands::prev_word_start(cx);
+
+    move_prev_word_start(cx);
+
+    // Helix always selects as it moves: Reuse the movement implementation but cancel the selection.
+    if cx.editor.mode != Mode::Select {
+        let (view, doc) = current!(cx.editor);
+        doc.set_selection(
+            view.id,
+            doc.selection(view.id).clone().transform(|range| {
+                return Range::new(range.head, range.head); // TODO: probably not correct to have anchor == head
+            }),
+        );
+    }
 }
 
 fn evil_next_word_start(cx: &mut Context) {
-    EvilCommands::next_word_start(cx);
+    // TODO: evil-specific implementation in evil.rs
+    //EvilCommands::next_word_start(cx);
+
+    move_next_word_start(cx);
+
+    // Helix always selects as it moves: Reuse the movement implementation but cancel the selection.
+    if cx.editor.mode != Mode::Select {
+        let (view, doc) = current!(cx.editor);
+        doc.set_selection(
+            view.id,
+            doc.selection(view.id).clone().transform(|range| {
+                return Range::new(range.head, range.head); // TODO: probably not correct to have anchor == head
+            }),
+        );
+    }
 }
 
 fn evil_delete(cx: &mut Context) {
