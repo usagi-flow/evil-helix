@@ -116,10 +116,6 @@ impl EvilCommands {
         return cx.editor.mode();
     }
 
-    pub fn prev_word_start(_cx: &mut Context) {}
-
-    pub fn next_word_start(_cx: &mut Context) {}
-
     fn get_selection(cx: &mut Context) -> Option<Selection> {
         let (view, doc) = current!(cx.editor);
 
@@ -265,25 +261,6 @@ impl EvilCommands {
         let register = registers.get_mut(register_name);
         let _selections = values.len();
         register.write(values);
-
-        /*if set_status_message {
-            let message;
-            if selections == 1 {
-                message = format!(
-                    "Yanked {} selection to register {}",
-                    selections,
-                    cx.register.unwrap_or('"')
-                );
-            } else {
-                message = format!(
-                    "Yanked {} selections to register {}",
-                    selections,
-                    cx.register.unwrap_or('"')
-                );
-            }
-
-            cx.editor.set_status(message);
-        }*/
     }
 
     fn delete_selection(cx: &mut Context, selection: &Selection, _set_status_message: bool) {
@@ -298,17 +275,6 @@ impl EvilCommands {
         });
 
         doc.apply(&transaction, view.id);
-
-        /*match op {
-            Operation::Delete => {
-                // exit select mode, if currently in select mode
-                exit_select_mode(cx);
-            }
-            Operation::Change => {
-                let (_view, doc) = current!(cx.editor);
-                enter_insert_mode(doc);
-            }
-        }*/
     }
 
     fn evil_command(cx: &mut Context, requested_command: Command, set_mode: Option<Mode>) {
@@ -332,12 +298,6 @@ impl EvilCommands {
                         Some(Box::new(move |cx: &mut Context, e: KeyEvent| {
                             Self::evil_command_key_callback(cx, e);
                         }));
-
-                    if let Some(count) = Self::context().count {
-                        Self::trace(cx, format!("Command initiated with count {}", count));
-                    } else {
-                        Self::trace(cx, format!("Command initiated without count"));
-                    }
                 } else {
                     // We're in the select mode, execute the command immediately.
                     Self::evil_command(cx, requested_command, set_mode);
@@ -378,14 +338,11 @@ impl EvilCommands {
 
                 // The command was executed, reset the context.
                 Self::context_mut().reset();
-
-                //Self::trace(cx, "Command executed");
             }
             _ => {
                 // A command was initiated, but another one was executed: cancel the command.
+                Self::trace(cx, "Command interrupted");
                 Self::context_mut().reset();
-
-                Self::trace(cx, "Command reset");
             }
         }
     }
@@ -403,14 +360,9 @@ impl EvilCommands {
         if let Some(command) = e.char().and_then(|c| Command::try_from(c).ok()) {
             // Assume this callback is called only if a command was initiated
             if command == active_command {
-                Self::trace(cx, "Key callback: Executing command");
                 Self::evil_command(cx, active_command, set_mode);
             } else {
                 // A command was initiated, but another command was initiated.
-                Self::trace(
-                    cx,
-                    "Key callback: Command interrupted due to another command",
-                );
                 Self::context_mut().reset();
                 // TODO: proceed with initiating the other command?
             }
@@ -419,7 +371,6 @@ impl EvilCommands {
 
         // Is the command being executed with a motion key?
         if let Some(motion) = e.char().and_then(|c| Motion::try_from(c).ok()) {
-            Self::trace(cx, "Key callback: Motion key detected, executing command");
             Self::context_mut().motion = Some(motion);
             // TODO; a motion key should immediately execute the command
             Self::evil_command(cx, active_command, set_mode);
@@ -432,9 +383,13 @@ impl EvilCommands {
             .char()
             .and_then(|c| usize::from_str_radix(c.to_string().as_str(), 10).ok())
         {
-            Self::trace(cx, "Key callback: Increasing count");
             let mut evil_context = Self::context_mut();
             evil_context.count = Some(evil_context.count.map(|c| c * 10).unwrap_or(0) + value);
+
+            log::info!(
+                "Key callback: Increasing count to {}",
+                evil_context.count.unwrap()
+            );
 
             // TODO: doesn't seem to work
             cx.on_next_key_callback = Some(Box::new(move |cx: &mut Context, e: KeyEvent| {
@@ -444,8 +399,8 @@ impl EvilCommands {
             return;
         }
 
-        // A command was initiated, but an illegal motion was used: cancel the command.
-        Self::trace(cx, "Key callback: Command interrupted");
+        // A command was initiated, but an unrelated key was pressed: cancel the command.
+        Self::trace(cx, "Command interrupted");
         Self::context_mut().reset();
     }
 
