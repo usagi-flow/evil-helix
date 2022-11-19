@@ -253,14 +253,14 @@ impl EvilCommands {
     fn yank_selection(cx: &mut Context, selection: &Selection, _set_status_message: bool) {
         let (_view, doc) = current!(cx.editor);
 
-        let registers = &mut cx.editor.registers;
-        let register_name = cx.register.unwrap_or('"');
         let text = doc.text().slice(..);
 
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
-        let register = registers.get_mut(register_name);
         let _selections = values.len();
-        register.write(values);
+
+        cx.editor
+            .registers
+            .write(cx.register.unwrap_or('"'), values);
     }
 
     fn delete_selection(cx: &mut Context, selection: &Selection, _set_status_message: bool) {
