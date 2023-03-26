@@ -156,6 +156,32 @@ impl EvilCommands {
         return selection;
     }
 
+    fn get_character_based_selection(cx: &mut Context) -> Selection {
+        let (view, doc) = current!(cx.editor);
+
+        // For each cursor, select one or more characters forward or backward according
+        // to the count in the evil context and the motion respectively.
+        return doc.selection(view.id).clone().transform(|range| {
+            // TODO: it'd be nice if the get_*_selection() functions were independent of the
+            // cx.count vs context().count logic
+            // If we use an evil command which uses the hotkey twice (dd, yy, ...), we need to use the evil context,
+            // but if we use an immediate command (x, ...), we need the regular context...
+            //let mut count = Self::context().count.unwrap_or(1);
+            let mut count = cx.count.map(|non_zero| non_zero.get()).unwrap_or(1);
+
+            let anchor = range.anchor.min(range.head);
+            let head = range.anchor.max(range.head);
+
+            if head > anchor {
+                count -= 1;
+            }
+
+            let head = head + count;
+
+            Range::new(anchor, head)
+        });
+    }
+
     fn get_word_based_selection(cx: &mut Context, motion: &Motion) -> Selection {
         let (view, doc) = current!(cx.editor);
 
@@ -420,5 +446,13 @@ impl EvilCommands {
                 Operation::Change => Mode::Insert,
             }),
         );
+    }
+
+    /// Delete a single character or the selection immediately,
+    /// and return to normal mode if the select mode was active.
+    pub fn delete_immediate(cx: &mut Context) {
+        let selection = Self::get_character_based_selection(cx);
+        Self::delete_selection(cx, &selection, false);
+        exit_select_mode(cx);
     }
 }
