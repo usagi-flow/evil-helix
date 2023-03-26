@@ -522,6 +522,7 @@ impl MappableCommand {
         evil_prev_word_start, "Previous word start (evil)",
         evil_next_word_start, "Next word start (evil)",
         evil_delete, "Delete (evil)",
+        evil_delete_immediate, "Delete immediately (evil)",
         evil_yank, "Yank (evil)",
         evil_change, "Change (evil)",
         command_palette, "Open command palette",
@@ -6240,6 +6241,10 @@ fn evil_next_word_start(cx: &mut Context) {
 
 fn evil_delete(cx: &mut Context) {
     EvilCommands::delete(cx, Operation::Delete);
+}
+
+fn evil_delete_immediate(cx: &mut Context) {
+    EvilCommands::delete_immediate(cx);
 }
 
 fn evil_yank(cx: &mut Context) {
