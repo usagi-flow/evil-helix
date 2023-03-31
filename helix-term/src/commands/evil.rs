@@ -395,14 +395,6 @@ impl EvilCommands {
             return;
         }
 
-        // Is the command being executed with a motion key?
-        if let Some(motion) = e.char().and_then(|c| Motion::try_from(c).ok()) {
-            Self::context_mut().motion = Some(motion);
-            // TODO; a motion key should immediately execute the command
-            Self::evil_command(cx, active_command, set_mode);
-            return;
-        }
-
         // Is the command receiving a new/increased count?
         // TODO: better way to parse a char?
         if let Some(value) = e
@@ -410,18 +402,32 @@ impl EvilCommands {
             .and_then(|c| usize::from_str_radix(c.to_string().as_str(), 10).ok())
         {
             let mut evil_context = Self::context_mut();
-            evil_context.count = Some(evil_context.count.map(|c| c * 10).unwrap_or(0) + value);
 
-            log::info!(
-                "Key callback: Increasing count to {}",
-                evil_context.count.unwrap()
-            );
+            // If we start a count with 0, we don't mean a count, but most probably a motion (line start) instead.
+            if value != 0 || evil_context.count.is_some() {
+                evil_context.count = Some(evil_context.count.map(|c| c * 10).unwrap_or(0) + value);
 
-            // TODO: doesn't seem to work
-            cx.on_next_key_callback = Some(Box::new(move |cx: &mut Context, e: KeyEvent| {
-                Self::evil_command_key_callback(cx, e);
-            }));
+                log::info!(
+                    "Key callback: Increasing count to {}",
+                    evil_context.count.unwrap()
+                );
 
+                // TODO: doesn't seem to work
+                cx.on_next_key_callback = Some(Box::new(move |cx: &mut Context, e: KeyEvent| {
+                    Self::evil_command_key_callback(cx, e);
+                }));
+
+                return;
+            }
+        }
+
+        // Is the command being executed with a motion key?
+        // Check this after the count check, because "0" could imply increasing the count,
+        // and if it doesn't, it's probably a motion key.
+        if let Some(motion) = e.char().and_then(|c| Motion::try_from(c).ok()) {
+            Self::context_mut().motion = Some(motion);
+            // TODO; a motion key should immediately execute the command
+            Self::evil_command(cx, active_command, set_mode);
             return;
         }
 
