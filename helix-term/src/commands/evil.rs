@@ -133,12 +133,8 @@ impl EvilCommands {
 
                 if let Some(motion) = Self::context().motion.as_ref() {
                     // A motion was specified: Select accordingly
-                    Self::trace(
-                        cx,
-                        "Motion keys are not supported yet, performing line-based selection",
-                    );
-                    // TODO
-                    selection = Some(Self::get_word_based_selection(cx, motion));
+                    // TODO: handle other motion keys as well
+                    selection = Self::get_word_based_selection(cx, motion).ok();
                 } else {
                     // No motion was specified: Perform a line-based selection
                     selection = Some(Self::get_line_based_selection(cx));
@@ -182,16 +178,20 @@ impl EvilCommands {
         });
     }
 
-    fn get_word_based_selection(cx: &mut Context, motion: &Motion) -> Selection {
+    fn get_word_based_selection(cx: &mut Context, motion: &Motion) -> Result<Selection, String> {
         let (view, doc) = current!(cx.editor);
+        let mut error: Option<String> = None;
 
         // For each cursor, select one or more words forward or backward according
         // to the count in the evil context and the motion respectively.
-        return doc.selection(view.id).clone().transform(|range| {
+        let selection = doc.selection(view.id).clone().transform(|range| {
             let forward = match motion {
                 Motion::NextWordEnd => true,
                 Motion::PrevWordStart => false,
-                _ => panic!("Invalid motion"),
+                _ => {
+                    error = Some(format!("Unsupported motion"));
+                    return range;
+                }
             };
 
             let text = doc.text().slice(..);
@@ -242,6 +242,12 @@ impl EvilCommands {
 
             Range::new(anchor, range.head)
         });
+
+        if error.is_none() {
+            return Ok(selection);
+        } else {
+            return Err(error.unwrap());
+        }
     }
 
     fn get_line_based_selection(cx: &mut Context) -> Selection {
@@ -425,6 +431,11 @@ impl EvilCommands {
         // Check this after the count check, because "0" could imply increasing the count,
         // and if it doesn't, it's probably a motion key.
         if let Some(motion) = e.char().and_then(|c| Motion::try_from(c).ok()) {
+            log::info!(
+                "Key callback: Detected motion key '{}'",
+                e.char().unwrap_or('?')
+            );
+
             Self::context_mut().motion = Some(motion);
             // TODO; a motion key should immediately execute the command
             Self::evil_command(cx, active_command, set_mode);
