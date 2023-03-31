@@ -51,6 +51,14 @@ enum Motion {
     LineEnd,
 }
 
+#[derive(Debug)]
+pub enum CollapseMode {
+    Forward,
+    Backward,
+    ToAnchor,
+    ToHead,
+}
+
 impl TryFrom<char> for Motion {
     type Error = ();
 
@@ -102,6 +110,62 @@ impl EvilCommands {
 
     pub fn is_enabled() -> bool {
         true
+    }
+
+    /// Collapse selections such that the selections cover one character per cursor only.
+    pub fn collapse_selections(cx: &mut Context, collapse_mode: CollapseMode) {
+        let (view, doc) = current!(cx.editor);
+
+        doc.set_selection(
+            view.id,
+            doc.selection(view.id).clone().transform(|mut range| {
+                log::warn!(
+                    "Adjusting range (mode: {:?}): {} -> {}",
+                    collapse_mode,
+                    range.anchor,
+                    range.head
+                );
+
+                // TODO: when exiting insert mode after appending, we end up on the character _after_ the curson,
+                // while vim returns to the character _before_ the cursor.
+
+                match collapse_mode {
+                    CollapseMode::Forward => {
+                        let end = range.anchor.max(range.head);
+                        range.anchor = 0.max(end - 1);
+                        range.head = end;
+                    }
+                    CollapseMode::Backward => {
+                        let start = range.anchor.min(range.head);
+                        range.anchor = start;
+                        range.head = start + 1;
+                    }
+                    CollapseMode::ToAnchor => {
+                        if range.head > range.anchor {
+                            range.head = range.anchor + 1;
+                        } else {
+                            range.head = 0.max(range.anchor - 1);
+                        }
+                    }
+                    CollapseMode::ToHead => {
+                        if range.head > range.anchor {
+                            range.anchor = 0.max(range.head - 1);
+                        } else {
+                            range.anchor = range.head + 1;
+                        }
+                    }
+                }
+
+                log::warn!(
+                    "- Adjusted range (mode: {:?}): {} -> {}",
+                    collapse_mode,
+                    range.anchor,
+                    range.head
+                );
+
+                return range;
+            }),
+        );
     }
 
     fn context() -> RwLockReadGuard<'static, EvilContext> {

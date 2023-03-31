@@ -2799,6 +2799,11 @@ fn ensure_selections_forward(cx: &mut Context) {
 }
 
 pub fn enter_insert_mode(cx: &mut Context) {
+    if EvilCommands::is_enabled() {
+        // In evil mode, selections are possible in the selection/visual mode only.
+        EvilCommands::collapse_selections(cx, CollapseMode::Backward);
+    }
+
     cx.editor.mode = Mode::Insert;
 }
 
@@ -2851,6 +2856,12 @@ fn append_mode(cx: &mut Context) {
         )
     });
     doc.set_selection(view.id, selection);
+
+    // We already collapsed selections in `enter_insert_mode()`, but this function creates selections again,
+    // and we want to leave the cursor(s) at the end of the range(s).
+    if EvilCommands::is_enabled() {
+        EvilCommands::collapse_selections(cx, CollapseMode::Forward);
+    }
 }
 
 fn file_picker(cx: &mut Context) {
@@ -3567,6 +3578,11 @@ pub fn select_mode(cx: &mut Context) {
 }
 
 pub fn exit_select_mode(cx: &mut Context) {
+    if EvilCommands::is_enabled() {
+        // In evil mode, selections are possible in the selection/visual mode only.
+        EvilCommands::collapse_selections(cx, CollapseMode::ToHead);
+    }
+
     if cx.editor.mode == Mode::Select {
         cx.editor.mode = Mode::Normal;
     }
