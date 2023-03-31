@@ -6203,40 +6203,41 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     jump_to_label(cx, words, behaviour)
 }
 
+fn evil_move_word_impl<F>(cx: &mut Context, move_fn: F)
+where
+    F: Fn(RopeSlice, Range, usize) -> Range,
+{
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let old_anchor = range.anchor;
+        let mut new_range = move_fn(text, range, count);
+
+        new_range.anchor = match cx.editor.mode {
+            // In select mode, use a sticky anchor and move the head only
+            Mode::Select => old_anchor,
+            // When not in select mode, just move the cursor and do not select
+            _ => new_range.head,
+        };
+
+        return new_range;
+    });
+
+    doc.set_selection(view.id, selection);
+}
+
 fn evil_prev_word_start(cx: &mut Context) {
     // TODO: evil-specific implementation in evil.rs
+    evil_move_word_impl(cx, movement::move_prev_word_start);
     //EvilCommands::prev_word_start(cx);
-
-    move_prev_word_start(cx);
-
-    // Helix always selects as it moves: Reuse the movement implementation but cancel the selection.
-    if cx.editor.mode != Mode::Select {
-        let (view, doc) = current!(cx.editor);
-        doc.set_selection(
-            view.id,
-            doc.selection(view.id).clone().transform(|range| {
-                return Range::new(range.head, range.head); // TODO: probably not correct to have anchor == head
-            }),
-        );
-    }
 }
 
 fn evil_next_word_start(cx: &mut Context) {
     // TODO: evil-specific implementation in evil.rs
+    evil_move_word_impl(cx, movement::move_next_word_start);
     //EvilCommands::next_word_start(cx);
-
-    move_next_word_start(cx);
-
-    // Helix always selects as it moves: Reuse the movement implementation but cancel the selection.
-    if cx.editor.mode != Mode::Select {
-        let (view, doc) = current!(cx.editor);
-        doc.set_selection(
-            view.id,
-            doc.selection(view.id).clone().transform(|range| {
-                return Range::new(range.head, range.head); // TODO: probably not correct to have anchor == head
-            }),
-        );
-    }
 }
 
 fn evil_delete(cx: &mut Context) {
