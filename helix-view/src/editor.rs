@@ -240,6 +240,8 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
+    /// Vim keybindings and behavior. Defaults to true.
+    pub evil: bool,
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
     /// Number of lines to scroll at once. Defaults to 3
@@ -499,6 +501,16 @@ impl Default for ModeConfig {
             normal: String::from("NOR"),
             insert: String::from("INS"),
             select: String::from("SEL"),
+        }
+    }
+}
+
+impl ModeConfig {
+    pub fn default_evil() -> Self {
+        Self {
+            normal: String::from("NOR"),
+            insert: String::from("INS"),
+            select: String::from("VIS"),
         }
     }
 }
@@ -865,6 +877,7 @@ pub enum PopupBorderConfig {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            evil: true,
             scrolloff: 5,
             scroll_lines: 3,
             mouse: true,
@@ -942,6 +955,8 @@ pub struct Breakpoint {
 use futures_util::stream::{Flatten, Once};
 
 pub struct Editor {
+    pub evil: bool,
+
     /// Current editing mode.
     pub mode: Mode,
     pub tree: Tree,
@@ -1092,6 +1107,7 @@ impl Editor {
         area.height -= 1;
 
         Self {
+            evil: conf.evil,
             mode: Mode::Normal,
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
