@@ -6228,12 +6228,16 @@ where
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
+        let old_head = range.head;
         let old_anchor = range.anchor;
         let mut new_range = move_fn(text, range, count);
 
         new_range.anchor = match cx.editor.mode {
-            // In select mode, use a sticky anchor and move the head only
-            Mode::Select => old_anchor,
+            // In select mode, use a sticky anchor and move the head only;
+            // keeping in mind that in select mode, with a single char selected,
+            // the anchor typically points *before* the character.
+            Mode::Select if new_range.head < old_head => old_head.max(old_anchor),
+            Mode::Select => old_head.min(old_anchor),
             // When not in select mode, just move the cursor and do not select
             _ => new_range.head,
         };
