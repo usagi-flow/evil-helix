@@ -119,12 +119,12 @@ impl EvilCommands {
         doc.set_selection(
             view.id,
             doc.selection(view.id).clone().transform(|mut range| {
-                log::warn!(
+                /*log::warn!(
                     "Adjusting range (mode: {:?}): {} -> {}",
                     collapse_mode,
                     range.anchor,
                     range.head
-                );
+                );*/
 
                 // TODO: when exiting insert mode after appending, we end up on the character _after_ the curson,
                 // while vim returns to the character _before_ the cursor.
@@ -156,12 +156,12 @@ impl EvilCommands {
                     }
                 }
 
-                log::warn!(
+                /*log::warn!(
                     "- Adjusted range (mode: {:?}): {} -> {}",
                     collapse_mode,
                     range.anchor,
                     range.head
-                );
+                );*/
 
                 return range;
             }),
@@ -354,7 +354,8 @@ impl EvilCommands {
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
         let _selections = values.len();
 
-        cx.editor
+        let _ = cx
+            .editor
             .registers
             .write(cx.register.unwrap_or('"'), values);
     }
