@@ -354,7 +354,8 @@ impl EvilCommands {
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
         let _selections = values.len();
 
-        cx.editor
+        let _ = cx
+            .editor
             .registers
             .write(cx.register.unwrap_or('"'), values);
     }
