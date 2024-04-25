@@ -198,10 +198,17 @@ impl EvilCommands {
                 if let Some(motion) = Self::context().motion.as_ref() {
                     // A motion was specified: Select accordingly
                     // TODO: handle other motion keys as well
-                    selection = Self::get_word_based_selection(cx, motion).ok();
+                    selection = match motion {
+                        Motion::PrevWordStart | Motion::NextWordEnd => {
+                            Self::get_word_based_selection(cx, motion).ok()
+                        }
+                        Motion::LineStart | Motion::LineEnd => {
+                            Self::get_partial_line_based_selection(cx, motion).ok()
+                        }
+                    };
                 } else {
                     // No motion was specified: Perform a line-based selection
-                    selection = Some(Self::get_line_based_selection(cx));
+                    selection = Some(Self::get_full_line_based_selection(cx));
                 }
             }
             helix_view::document::Mode::Select => {
@@ -314,7 +321,39 @@ impl EvilCommands {
         }
     }
 
-    fn get_line_based_selection(cx: &mut Context) -> Selection {
+    fn get_partial_line_based_selection(
+        cx: &mut Context,
+        motion: &Motion,
+    ) -> Result<Selection, String> {
+        let (view, doc) = current!(cx.editor);
+
+        let text = doc.text();
+
+        // Process a number of lines: first create a temporary selection of the text to be processed
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            let (start_line, end_line) = range.line_range(text.slice(..));
+
+            let start: usize = text.line_to_char(start_line);
+            let mut end: usize = text.line_to_char((end_line + 1).min(text.len_lines()));
+
+            // Handle the edge case of finding the line end on the last line:
+            // We normally have to keep the EOL char(s) from being selected,
+            // but if there is no empty line at the end, we shouldn't skip characters.
+            if end_line < text.len_lines() {
+                end = end.saturating_sub(1); // TODO: we're removing LF, but what about multiple EOL characters?
+            }
+
+            return match motion {
+                Motion::LineStart => Range::new(start, range.anchor.max(range.head)),
+                Motion::LineEnd => Range::new(range.anchor.min(range.head), end),
+                _ => panic!("Unsupported motion"),
+            };
+        });
+
+        return Ok(selection);
+    }
+
+    fn get_full_line_based_selection(cx: &mut Context) -> Selection {
         let (view, doc) = current!(cx.editor);
 
         let lines_to_select = Self::context().count.unwrap_or(1);
