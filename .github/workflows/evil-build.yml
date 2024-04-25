@@ -21,6 +21,7 @@ jobs:
   build:
 
     strategy:
+      fail-fast: false # TODO: mac builds don't work well yet
       matrix:
         target:
           - id: x86_64-unknown-linux-gnu
@@ -28,11 +29,11 @@ jobs:
             native: true
             os: ubuntu-latest
           - id: aarch64-unknown-linux-gnu
-            name: arm64-linux
+            name: aarch64-linux
             native: false
             os: ubuntu-latest
           - id: aarch64-unknown-linux-musl
-            name: arm64-linux-musl
+            name: aarch64-linux-musl
             native: false
             os: ubuntu-latest
           - id: arm-unknown-linux-musleabihf
@@ -40,10 +41,14 @@ jobs:
             native: false
             os: ubuntu-latest
           # TODO: currently doesn't build
-          #- id: x86_64-apple-darwin
-          #  name: amd64-macos
-          #  native: true
-          #  os: macos-latest
+          - id: x86_64-apple-darwin
+            name: amd64-macos
+            native: true
+            os: macos-latest
+          - id: aarch64-apple-darwin
+            name: aarch64-macos
+            native: true
+            os: macos-latest
 
     runs-on: ${{ matrix.target.os }}
 
