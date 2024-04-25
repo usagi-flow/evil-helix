@@ -1,0 +1,99 @@
+name: Build
+on:
+  push:
+    branches:
+      - feat-evil-base
+  workflow_dispatch:
+
+permissions: write-all
+
+env:
+  RUST_BACKTRACE: 1
+  HELIX_LOG_LEVEL: info
+
+jobs:
+
+  build:
+
+    strategy:
+      matrix:
+        target:
+          - id: x86_64-unknown-linux-gnu
+            name: amd64-linux
+            native: true
+            os: ubuntu-latest
+          - id: aarch64-unknown-linux-gnu
+            name: arm64-linux
+            native: false
+            os: ubuntu-latest
+          - id: aarch64-unknown-linux-musl
+            name: arm64-linux-musl
+            native: false
+            os: ubuntu-latest
+          - id: arm-unknown-linux-musleabihf
+            name: armv6-linux-musl
+            native: false
+            os: ubuntu-latest
+          - id: x86_64-apple-darwin
+            name: amd64-macos
+            native: true
+            os: macos-latest
+        #os: [ubuntu-latest, macos-latest] #, windows-latest]
+
+    runs-on: ${{ matrix.target.os }}
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@1.70
+        with:
+          targets: ${{ matrix.target.id }}
+
+      - name: Install binstall
+        uses: "cargo-bins/cargo-binstall@v1.6.5"
+        if: ${{ !matrix.target.native}}
+
+      - name: "Install cross"
+        run: "cargo binstall -y cross"
+        if: ${{ !matrix.target.native}}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build"
+
+      - name: Build
+        run: cargo build --target ${{ matrix.target.id }} --profile opt
+        if: ${{ matrix.target.native}}
+
+      - name: Build (cross)
+        run: cross build --target ${{ matrix.target.id }} --profile opt
+        if: ${{ !matrix.target.native}}
+
+      - name: "Prepare dist"
+        run: |
+          mkdir -pv dist/helix
+          #mv -v target/opt/hx dist/helix/
+          mv -v target/${{ matrix.target.id }}/opt/hx dist/helix/
+          rm -rf runtime/grammars/sources
+          mv -v runtime dist/helix/
+          #cd dist && tar -cvzf helix-${ { matrix.os }}.tar.gz helix
+          cd dist && tar -cvzf helix-${{ matrix.target.name }}.tar.gz helix
+
+      - name: "Upload artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          #name: helix-${ { matrix.os }}
+          #path: dist/helix-${ { matrix.os }}.tar.gz
+          name: helix-${{ matrix.target.name }}
+          path: dist/helix-${{ matrix.target.name }}.tar.gz
+
+      - name: Rolling release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/*
+          file_glob: true
+          tag: ${{ github.ref_name }}
+          overwrite: true
