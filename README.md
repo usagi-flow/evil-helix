@@ -13,11 +13,11 @@ A soft fork of [Helix](https://helix-editor.com) which introduces Vim keybinding
 
 ## Installation
 
-[Download a package](https://github.com/usagi-flow/helix/releases/tag/feat-evil-base) and extract it in `/opt`. Additionally, it's recommended to symlink it in `/usr/local/bin`:
+[Download a package](https://github.com/usagi-flow/evil-helix/releases) and extract it in `/opt`. Additionally, it's recommended to symlink it in `/usr/local/bin`:
 
 ```sh
 cd /opt
-sudo curl -Lo helix.tar.gz https://github.com/usagi-flow/helix/releases/download/feat-evil-base/helix-<ARCH>-<OS>.tar.gz
+sudo curl -Lo helix.tar.gz https://github.com/usagi-flow/evil-helix/releases/download/release-<VERSION>/helix-<ARCH>-<OS>.tar.gz
 sudo tar -xf helix.tar.gz
 cd /usr/local/bin
 sudo ln -sv /opt/helix/hx .
