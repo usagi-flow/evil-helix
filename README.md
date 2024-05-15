@@ -1,64 +1,63 @@
 <div align="center">
 
-<h1>
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="logo_dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="logo_light.svg">
-  <img alt="Helix" height="128" src="logo_light.svg">
-</picture>
-</h1>
+<h1>evil-helix</h1>
 
-[![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
-[![GitHub Release](https://img.shields.io/github/v/release/helix-editor/helix)](https://github.com/helix-editor/helix/releases/latest)
-[![Documentation](https://shields.io/badge/-documentation-452859)](https://docs.helix-editor.com/)
-[![GitHub contributors](https://img.shields.io/github/contributors/helix-editor/helix)](https://github.com/helix-editor/helix/graphs/contributors)
-[![Matrix Space](https://img.shields.io/matrix/helix-community:matrix.org)](https://matrix.to/#/#helix-community:matrix.org)
+A soft fork of [Helix](https://helix-editor.com) which introduces Vim keybindings and more.
+
+[![Build status](https://img.shields.io/github/actions/workflow/status/usagi-flow/helix/evil-build.yml?style=for-the-badge&logo=github)](https://github.com/usagi-flow/helix/actions/workflows/evil-build.yml)
 
 </div>
 
-![Screenshot](./screenshot.png)
+> [!IMPORTANT]
+> This project is a work-in-progress, but should be stable enough for daily usage.
 
-A [Kakoune](https://github.com/mawww/kakoune) / [Neovim](https://github.com/neovim/neovim) inspired editor, written in Rust.
+## Installation
 
-The editing model is very heavily based on Kakoune; during development I found
-myself agreeing with most of Kakoune's design decisions.
+[Download a package](https://github.com/usagi-flow/helix/releases/tag/feat-evil-base) and extract it in `/opt`. Additionally, it's recommended to symlink it in `/usr/local/bin`:
 
-For more information, see the [website](https://helix-editor.com) or
-[documentation](https://docs.helix-editor.com/).
+```sh
+cd /opt
+sudo curl -Lo helix.tar.gz https://github.com/usagi-flow/helix/releases/download/feat-evil-base/helix-<ARCH>-<OS>.tar.gz
+sudo tar -xf helix.tar.gz
+cd /usr/local/bin
+sudo ln -sv /opt/helix/hx .
+```
 
-All shortcuts/keymaps can be found [in the documentation on the website](https://docs.helix-editor.com/keymap.html).
+Builds are not in package repositories yet.
 
-[Troubleshooting](https://github.com/helix-editor/helix/wiki/Troubleshooting)
+## Project philosophy
 
-# Features
+### Configurable features instead of plugins
 
-- Vim-like modal editing
-- Multiple selections
-- Built-in language server support
-- Smart, incremental syntax highlighting and code editing via tree-sitter
+This fork seeks to implement functionality as part of the editor, and make it configurable.
+The added functionality includes a Vim look-and-feel, but also other features.
 
-It's a terminal-based editor first, but I'd like to explore a custom renderer
-(similar to Emacs) in wgpu or skulpin.
+In contrast, the upstream project, Helix, mostly limits its scope to its current core functionality, and defers further functionality to the future Scheme-based plugin system.
 
-Note: Only certain languages have indentation definitions at the moment. Check
-`runtime/queries/<lang>/` for `indents.scm`.
+Compared to plugins, implementing features as part of the editor greatly improves performance, and avoids the risk of plugin compatibility issues.
 
-# Installation
+### Sensible defaults
 
-[Installation documentation](https://docs.helix-editor.com/install.html).
+In addition, sensible defaults are crucial:
+The editor must offer a wide range of tools for your job, but it must do what you expect an editor to do.
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
+### Avoid Scheme/Lisp
 
-# Contributing
+Scheme/Lisp should not be forced onto the user.
+It's error-prone and harder to read by humans, compared to Rust/TOML/Lua/...
 
-Contributing guidelines can be found [here](./docs/CONTRIBUTING.md).
+If upstream Helix moves to a [Scheme-based configuration](https://github.com/helix-editor/helix/issues/10389),
+this project will seek to keep a user-friendly alternative.
 
-# Getting help
+## Project goals
 
-Your question might already be answered on the [FAQ](https://github.com/helix-editor/helix/wiki/FAQ).
-
-Discuss the project on the community [Matrix Space](https://matrix.to/#/#helix-community:matrix.org) (make sure to join `#helix-editor:matrix.org` if you're on a client that doesn't support Matrix Spaces yet).
-
-# Credits
-
-Thanks to [@jakenvac](https://github.com/jakenvac) for designing the logo!
+-	Introduce more Vim keybindings
+-	Implement common/crucial features as part of the editor:
+	-	File tree (cf. [upstream PR](https://github.com/helix-editor/helix/pull/5768))
+	-	Light/dark mode support
+	-	Modeline support (cf. [upstream PR](https://github.com/helix-editor/helix/pull/7788))
+-	Maintain compatibility with upstream
+	-	Isolate features to minimize conflicts with upstream changes
+	-	Contribute features to upstream where possible
+	-	Ensure (through CI) that rebasing is always possible
+	-	Find a name for this project
