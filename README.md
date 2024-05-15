@@ -31,8 +31,7 @@ sudo ln -sv /opt/helix/hx .
 
 If a package is available for your system's package manager, it's the recommended way to install evil-helix.
 
-[![AUR package](https://repology.org/badge/version-for-repo/aur/evil-helix.svg)](https://repology.org/project/evil-helix/versions)
-[![nixpkgs unstable package](https://repology.org/badge/version-for-repo/nix_unstable/evil-helix.svg)](https://repology.org/project/evil-helix/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/evil-helix.svg)](https://repology.org/project/evil-helix/versions)
 
 ## Current state
 
