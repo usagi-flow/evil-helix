@@ -4,7 +4,7 @@
 
 A soft fork of [Helix](https://helix-editor.com) which introduces Vim keybindings and more.
 
-[![Build status](https://img.shields.io/github/actions/workflow/status/usagi-flow/helix/evil-build.yml?style=for-the-badge&logo=github)](https://github.com/usagi-flow/helix/actions/workflows/evil-build.yml)
+[![Build status](https://img.shields.io/github/actions/workflow/status/usagi-flow/evil-helix/evil-build-tag.yml?style=for-the-badge&logo=github)](https://github.com/usagi-flow/evil-helix/actions/workflows/evil-build-tag.yml)
 
 ![Screenshot](./screenshot.png)
 
