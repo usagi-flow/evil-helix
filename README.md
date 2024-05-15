@@ -27,7 +27,13 @@ cd /usr/local/bin
 sudo ln -sv /opt/helix/hx .
 ```
 
-Builds are not in package repositories yet.
+### Arch Linux
+
+[`evil-helix-bin`](https://aur.archlinux.org/packages/evil-helix-bin) is available in the AUR and can be installed using your favorite AUR helper. E.g.:
+
+```sh
+paru -S evil-helix-bin
+```
 
 ## Current state
 
