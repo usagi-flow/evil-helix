@@ -29,6 +29,20 @@ sudo ln -sv /opt/helix/hx .
 
 Builds are not in package repositories yet.
 
+## Current state
+
+These are the current differences compared to the upstream project:
+
+-	Vim keybindings (_feel free to file an issue if you're missing certain bindings_):
+	-	Commands: `c`, `d`, `y`, `x`
+	-	Movements/modifiers: `w`, `0`, `$`
+-	Basic Vim modeline support (#3)
+-	Adjusted defaults (511060abcfcbe9377ec50e8a0ecaf4c0660776bb):
+	-	The default theme is `catppuccin_macchiato`
+	-	Smart tab is disabled by default
+-	If `color_modes` is enabled, color the file type in the statusline as well (5503542c0314936ea91464f2944666ed42fea86c)
+-	Minimalistic window separator (dd990cad1cb92a024321aca19728c68cb066dd09)
+
 ## Project philosophy
 
 ### Configurable features instead of plugins
@@ -53,18 +67,23 @@ It's error-prone and harder to read by humans, compared to Rust/TOML/Lua/...
 If upstream Helix moves to a [Scheme-based configuration](https://github.com/helix-editor/helix/issues/10389),
 this project will seek to keep a user-friendly alternative.
 
+### Soft fork
+
+This project is a "soft fork", i.e. it remains compatible with the upstream and regularly rebases its changes on top of the upstream master branch. New features should be carefully isolated from the upstream codebase in order to avoid conflicts.
+
+Whether this project remains in this state will depend on how much this project's philosophy and the upstream project diverge, although a hard fork should be considered as a last resort.
+
 ## Project goals
 
+-	Find a better name for this project
+	-	Move the project into an organization
 -	Introduce more Vim keybindings
--	Implement common/crucial features as part of the editor:
+-	Implement more common/crucial features as part of the editor:
 	-	File tree (cf. [upstream PR](https://github.com/helix-editor/helix/pull/5768))
 	-	Light/dark mode support
-	-	Modeline support (cf. [upstream PR](https://github.com/helix-editor/helix/pull/7788))
 -	Maintain compatibility with upstream
-	-	Isolate features to minimize conflicts with upstream changes
 	-	Contribute features to upstream where possible
 	-	Ensure (through CI) that rebasing is always possible
-	-	Find a name for this project
 
 ## Development
 
