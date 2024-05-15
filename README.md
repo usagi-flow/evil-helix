@@ -65,3 +65,7 @@ this project will seek to keep a user-friendly alternative.
 	-	Contribute features to upstream where possible
 	-	Ensure (through CI) that rebasing is always possible
 	-	Find a name for this project
+
+## Development
+
+Keep in mind the `main` branch is regularly being rebased onto the upstream `master` branch.
