@@ -13,7 +13,7 @@ A soft fork of [Helix](https://helix-editor.com) which introduces Vim keybinding
 </div>
 
 > [!IMPORTANT]
-> This project is a work-in-progress, but should be stable enough for daily usage.
+> This project often integrates the latest Helix changes, but should be stable enough for daily usage.
 
 ## Installation
 
@@ -41,7 +41,8 @@ These are the current differences compared to the upstream project:
 
 -	Vim keybindings (_feel free to file an issue if you're missing certain bindings_):
 	-	Commands: `c`, `d`, `y`, `x`
-	-	Movements/modifiers: `w`, `0`, `$`
+	-	Modifiers: `i`
+	-	Motions: `w`, `0`, `$`
 -	Basic Vim modeline support ([#3](https://github.com/usagi-flow/evil-helix/pull/3))
 -	Adjusted defaults ([511060a](https://github.com/usagi-flow/evil-helix/commit/511060abcfcbe9377ec50e8a0ecaf4c0660776bb)):
 	-	The Helix "SEL" mode is called "VIS"
@@ -80,10 +81,15 @@ This project is a "soft fork", i.e. it remains compatible with the upstream and 
 
 Whether this project remains in this state will depend on how much this project's philosophy and the upstream project diverge, although a hard fork should be considered as a last resort.
 
+### Small and regular version releases
+
+Considering the kind and frequency of changes to this repository, it makes sense to release small changes often, rather than holding features back in large releases. Releases are currently tagged on-demand.
+
 ## Project goals
 
--	Find a better name for this project
+-	Consider a better name for this project
 	-	Move the project into an organization
+-	Improve and stabilize the CI
 -	Introduce more Vim keybindings
 -	Implement more common/crucial features as part of the editor:
 	-	File tree (cf. [upstream PR](https://github.com/helix-editor/helix/pull/5768))
