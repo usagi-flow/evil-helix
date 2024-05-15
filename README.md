@@ -27,13 +27,12 @@ cd /usr/local/bin
 sudo ln -sv /opt/helix/hx .
 ```
 
-### Arch Linux
+### Package manager
 
-[`evil-helix-bin`](https://aur.archlinux.org/packages/evil-helix-bin) is available in the AUR and can be installed using your favorite AUR helper. E.g.:
+If a package is available for your system's package manager, it's the recommended way to install evil-helix.
 
-```sh
-paru -S evil-helix-bin
-```
+[![AUR package](https://repology.org/badge/version-for-repo/aur/evil-helix.svg)](https://repology.org/project/evil-helix/versions)
+[![nixpkgs unstable package](https://repology.org/badge/version-for-repo/nix_unstable/evil-helix.svg)](https://repology.org/project/evil-helix/versions)
 
 ## Current state
 
