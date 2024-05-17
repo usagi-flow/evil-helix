@@ -1,3 +1,5 @@
+name: "evil-helix - build tag"
+
 on:
   push:
     tags:

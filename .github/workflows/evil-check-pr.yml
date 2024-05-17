@@ -1,3 +1,5 @@
+name: "evil-helix - check pr"
+
 on:
   pull_request:
   workflow_dispatch:
