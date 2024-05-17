@@ -44,7 +44,7 @@ jobs:
           shared-key: "build"
 
       - name: Build
-        run: cargo build --release
+        run: cargo build --target ${{ matrix.target.id }} --release
 
       - name: "Prepare dist"
         run: |
