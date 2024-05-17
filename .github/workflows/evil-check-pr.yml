@@ -41,19 +41,8 @@ jobs:
         with:
           shared-key: "build"
 
-      - name: Build
-        run: cargo build --release
+      - name: Check
+        run: cargo check
 
-      - name: "Prepare dist"
-        run: |
-          mkdir -pv dist/helix
-          mv -v target/${{ matrix.target.id }}/opt/hx dist/helix/
-          rm -rf runtime/grammars/sources
-          mv -v runtime dist/helix/
-          cd dist && tar -cvzf helix-${{ matrix.target.name }}.tar.gz helix
-
-      - name: "Upload artifacts"
-        uses: actions/upload-artifact@v4
-        with:
-          name: helix-${{ matrix.target.name }}
-          path: dist/helix-${{ matrix.target.name }}.tar.gz
+      - name: Test
+        run: cargo test
