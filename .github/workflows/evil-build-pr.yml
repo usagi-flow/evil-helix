@@ -49,7 +49,7 @@ jobs:
       - name: "Prepare dist"
         run: |
           mkdir -pv dist/helix
-          mv -v target/${{ matrix.target.id }}/opt/hx dist/helix/
+          mv -v target/${{ matrix.target.id }}/release/hx dist/helix/
           rm -rf runtime/grammars/sources
           mv -v runtime dist/helix/
           cd dist && tar -cvzf helix-${{ matrix.target.name }}.tar.gz helix
