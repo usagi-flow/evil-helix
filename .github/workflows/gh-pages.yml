@@ -1,11 +1,12 @@
 name: GitHub Pages
 
 on:
-  push:
-    branches:
-      - master
-    tags:
-      - '*'
+  workflow_dispatch:
+  #push:
+  #  branches:
+  #    - master
+  #  tags:
+  #    - '*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
