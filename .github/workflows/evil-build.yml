@@ -76,7 +76,9 @@ jobs:
           shared-key: "build"
 
       - name: Build
-        run: cargo build --target ${{ matrix.target.id }} --profile opt
+        run: |
+          rustup target add ${{ matrix.target.id }}
+          cargo build --target ${{ matrix.target.id }} --profile opt
         if: ${{ matrix.target.native}}
 
       - name: Build (cross)
