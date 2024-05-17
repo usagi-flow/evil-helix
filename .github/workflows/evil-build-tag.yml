@@ -1,11 +1,7 @@
-name: Build
 on:
   push:
     tags:
       - "release-*"
-    #branches:
-    #  - feat-evil-base
-  #workflow_dispatch:
 
 permissions: write-all
 
@@ -23,7 +19,7 @@ jobs:
   build:
 
     strategy:
-      fail-fast: false # TODO: mac builds don't work well yet
+      fail-fast: false
       matrix:
         target:
           - id: x86_64-unknown-linux-gnu
@@ -42,7 +38,6 @@ jobs:
             name: armv6-linux-musl
             native: false
             os: ubuntu-latest
-          # TODO: currently doesn't build
           - id: x86_64-apple-darwin
             name: amd64-macos
             native: true
@@ -91,7 +86,6 @@ jobs:
           mv -v target/${{ matrix.target.id }}/opt/hx dist/helix/
           rm -rf runtime/grammars/sources
           mv -v runtime dist/helix/
-          #cd dist && tar -cvzf helix-${ { matrix.os }}.tar.gz helix
           cd dist && tar -cvzf helix-${{ matrix.target.name }}.tar.gz helix
 
       - name: "Upload artifacts"
