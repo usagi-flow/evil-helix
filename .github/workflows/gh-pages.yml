@@ -1,11 +1,12 @@
 name: Github Pages
 
 on:
-  push:
-    branches:
-      - master
-    tags:
-      - '*'
+  workflow_dispatch:
+  #push:
+  #  branches:
+  #    - master
+  #  tags:
+  #    - '*'
 
 jobs:
   deploy:
