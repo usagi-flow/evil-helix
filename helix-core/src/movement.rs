@@ -463,7 +463,7 @@ impl CharHelpers for Chars<'_> {
     }
 }
 
-fn is_word_boundary(a: char, b: char) -> bool {
+pub fn is_word_boundary(a: char, b: char) -> bool {
     categorize_char(a) != categorize_char(b)
 }
 
