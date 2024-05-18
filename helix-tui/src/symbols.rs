@@ -9,6 +9,7 @@ pub mod block {
     pub const THREE_EIGHTHS: &str = "▍";
     pub const ONE_QUARTER: &str = "▎";
     pub const ONE_EIGHTH: &str = "▏";
+    pub const EMPTY: &str = " ";
 
     #[derive(Debug, Clone)]
     pub struct Set {
@@ -57,6 +58,7 @@ pub mod bar {
     pub const THREE_EIGHTHS: &str = "▃";
     pub const ONE_QUARTER: &str = "▂";
     pub const ONE_EIGHTH: &str = "▁";
+    pub const EMPTY: &str = " ";
 
     #[derive(Debug, Clone)]
     pub struct Set {
