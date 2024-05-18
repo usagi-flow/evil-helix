@@ -1,0 +1,111 @@
+# TODO: until the ci works better
+#on: [push]
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_HOME: /workspace/nehu/helix/cargo-home
+  RUSTUP_HOME: /workspace/nehu/helix/rustup-home
+  #CROSS_CONTAINER_IN_CONTAINER: true
+  CROSS_CONTAINER_ENGINE: podman
+  HELIX_DEFAULT_RUNTIME: /usr/lib/helix/runtime
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        target:
+          - id: x86_64-unknown-linux-gnu
+            name: amd64-linux
+          # TODO: doesn't work well yet
+          #- id: x86_64-apple-darwin
+          #  name: amd64-macos
+          - id: aarch64-unknown-linux-gnu
+            name: arm64-linux
+          - id: aarch64-unknown-linux-musl
+            name: arm64-linux-musl
+          - id: arm-unknown-linux-musleabihf
+            name: armv6-linux-musl
+      max-parallel: 2
+    runs-on: linux-x86_64
+    container:
+      image: rust
+      #image: rust:alpine3.19
+    steps:
+      # Required by 3rd-party actions
+      # `musl-dev` required to avoid the crti.o error (https://github.com/rust-lang/rust/issues/40174)
+      - run: "apt update && apt install -y podman git nodejs tree"
+      - run: mkdir -pv ~/.rustup ~/.cargo
+      - uses: "actions/checkout@v3"
+      - name: "Restore rustup cache"
+        id: "cache-rustup-restore"
+        uses: "actions/cache/restore@v4"
+        with:
+          path: |
+            rustup-home
+          key: "helix-rustup-${{ matrix.target.id }}"
+      - name: "Restore cargo cache"
+        id: "cache-cargo-restore"
+        uses: "actions/cache/restore@v4"
+        with:
+          path: |
+            cargo-home
+          key: "helix-cargo-${{ matrix.target.id }}"
+      - name: "Restore artifacts cache"
+        id: "cache-artifacts-restore"
+        uses: "actions/cache/restore@v4"
+        with:
+          path: |
+            target
+          key: "helix-artifacts-${{ matrix.target.id }}"
+      - name: "Install binstall"
+        uses: "https://github.com/cargo-bins/cargo-binstall@v1.6.5"
+      - name: "Install cross"
+        run: "cargo binstall -y cross"
+      #- name: "Install target: ${{ matrix.target.id }}"
+      #  if: ${{ matrix.target.id == 'x86_64-apple-darwin' }}
+      #  run: "rustup target add ${{ matrix.target.id }}"
+      - name: "Configure cross: ${{ matrix.target.id }}"
+        if: ${{ matrix.target.id == 'x86_64-apple-darwin' }}
+        run: |
+          echo "[target.${{ matrix.target.id }}]" >> Cross.toml
+          echo 'image = "ghcr.io/mrpixel1/x86_64-apple-darwin-cross:latest"' >> Cross.toml
+      - name: "Build"
+        run: $CARGO_HOME/bin/cross build --profile opt --target ${{ matrix.target.id }}
+      - name: "Save artifacts cache"
+        id: "cache-artifacts-save"
+        uses: "actions/cache/save@v4"
+        with:
+          path: |
+            target
+          key: "${{ steps.cache-artifacts-restore.outputs.cache-primary-key }}"
+      - name: "Save cargo cache"
+        if: "always()"
+        id: "cache-cargo-save"
+        uses: "actions/cache/save@v4"
+        with:
+          path: |
+            cargo-home
+          key: "${{ steps.cache-cargo-restore.outputs.cache-primary-key }}"
+      - name: "Save rustup cache"
+        if: "always()"
+        id: "cache-rustup-save"
+        uses: "actions/cache/save@v4"
+        with:
+          path: |
+            rustup-home
+          key: "${{ steps.cache-rustup-restore.outputs.cache-primary-key }}"
+      - name: "Prepare dist"
+        run: |
+          mkdir -pv dist/helix
+          mv -v target/${{ matrix.target.id }}/opt/hx dist/helix/
+          rm -rf runtime/grammars/sources
+          mv -v runtime dist/helix/
+          cd dist && tar -cvzf helix-${{ matrix.target.name }}.tar.gz helix
+      - name: "Upload artifacts"
+        # Temporary solution until https://code.forgejo.org/actions/upload-artifact works
+        #uses: "https://code.forgejo.org/forgejo/upload-artifact@v4"
+        uses: "https://code.forgejo.org/forgejo/upload-artifact@v3"
+        with:
+          name: helix-${{ matrix.target.name }}
+          path: dist/helix-${{ matrix.target.name }}.tar
