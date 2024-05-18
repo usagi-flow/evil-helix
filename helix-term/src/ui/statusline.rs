@@ -439,8 +439,25 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     let file_type = context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
+    let visible = context.focused;
 
-    write(context, format!(" {} ", file_type).into());
+    let style = if visible && context.editor.config().color_modes {
+        match context.editor.mode() {
+            Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
+            Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
+            Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
+        }
+    } else {
+        None
+    };
+
+    let content = format!(" {} ", file_type);
+
+    if let Some(style) = style {
+        write(context, Span::styled(content, style));
+    } else {
+        write(context, content.into());
+    }
 }
 
 fn render_file_name<'a, F>(context: &mut RenderContext<'a>, write: F)
