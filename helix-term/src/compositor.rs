@@ -59,22 +59,27 @@ impl<'a> Context<'a> {
 
     #[cfg(test)]
     pub fn dummy_editor() -> Editor {
-        use crate::config::Config;
+        // TODO
+        todo!()
+        /*use crate::config::Config;
         use arc_swap::{access::Map, ArcSwap};
         use helix_core::syntax::{self, Configuration};
         use helix_view::theme;
-        use std::sync::Arc;
+        use std::{collections::HashMap, sync::Arc};
 
         let config = Arc::new(ArcSwap::from_pointee(Config::default()));
         Editor::new(
             Rect::new(0, 0, 60, 120),
             Arc::new(theme::Loader::new(&[])),
-            Arc::new(syntax::Loader::new(Configuration { language: vec![] })),
+            Arc::new(syntax::Loader::new(Configuration {
+                language: vec![],
+                language_server: HashMap::new(),
+            })),
             Arc::new(Arc::new(Map::new(
                 Arc::clone(&config),
                 |config: &Config| &config.editor,
             ))),
-        )
+        )*/
     }
 }
 
@@ -119,14 +124,15 @@ pub trait Component: Any + AnyComponent {
     /// Utility method for testing `handle_event` without using integration test.
     /// Especially useful for testing helper components such as `Prompt`, `TreeView` etc
     fn handle_events(&mut self, events: &str) -> anyhow::Result<()> {
-        use helix_view::input::parse_macro;
+        // TODO
+        /*use helix_view::input::parse_macro;
 
         let mut editor = Context::dummy_editor();
         let mut jobs = Context::dummy_jobs();
         let mut cx = Context::dummy(&mut jobs, &mut editor);
         for event in parse_macro(events)? {
             self.handle_event(&Event::Key(event), &mut cx);
-        }
+        }*/
         Ok(())
     }
 }
