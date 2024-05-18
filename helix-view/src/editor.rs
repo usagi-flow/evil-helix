@@ -348,7 +348,7 @@ pub struct SmartTabConfig {
 impl Default for SmartTabConfig {
     fn default() -> Self {
         SmartTabConfig {
-            enable: true,
+            enable: false,
             supersede_menu: false,
         }
     }

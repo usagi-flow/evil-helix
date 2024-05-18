@@ -26,7 +26,7 @@ pub static BASE16_DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
 });
 
 pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
-    name: "default".into(),
+    name: "catppuccin_macchiato".into(),
     ..Theme::from(DEFAULT_THEME_DATA.clone())
 });
 
