@@ -1,8 +1,10 @@
 pub(crate) mod dap;
+pub(crate) mod evil;
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
+pub use evil::*;
 use helix_event::status;
 use helix_stdx::{
     path::expand_tilde,
@@ -517,6 +519,12 @@ impl MappableCommand {
         decrement, "Decrement item under cursor",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
+        evil_prev_word_start, "Previous word start (evil)",
+        evil_next_word_start, "Next word start (evil)",
+        evil_delete, "Delete (evil)",
+        evil_delete_immediate, "Delete immediately (evil)",
+        evil_yank, "Yank (evil)",
+        evil_change, "Change (evil)",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
@@ -2469,7 +2477,7 @@ fn global_search(cx: &mut Context) {
     );
 }
 
-enum Extend {
+pub enum Extend {
     Above,
     Below,
 }
@@ -2636,7 +2644,7 @@ fn shrink_to_line_bounds(cx: &mut Context) {
     );
 }
 
-enum Operation {
+pub enum Operation {
     Delete,
     Change,
 }
@@ -2790,7 +2798,12 @@ fn ensure_selections_forward(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn enter_insert_mode(cx: &mut Context) {
+pub fn enter_insert_mode(cx: &mut Context) {
+    if EvilCommands::is_enabled() {
+        // In evil mode, selections are possible in the selection/visual mode only.
+        EvilCommands::collapse_selections(cx, CollapseMode::Backward);
+    }
+
     cx.editor.mode = Mode::Insert;
 }
 
@@ -2843,6 +2856,12 @@ fn append_mode(cx: &mut Context) {
         )
     });
     doc.set_selection(view.id, selection);
+
+    // We already collapsed selections in `enter_insert_mode()`, but this function creates selections again,
+    // and we want to leave the cursor(s) at the end of the range(s).
+    if EvilCommands::is_enabled() {
+        EvilCommands::collapse_selections(cx, CollapseMode::Forward);
+    }
 }
 
 fn file_picker(cx: &mut Context) {
@@ -3537,7 +3556,7 @@ fn goto_last_modified_file(cx: &mut Context) {
     }
 }
 
-fn select_mode(cx: &mut Context) {
+pub fn select_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
@@ -3558,7 +3577,12 @@ fn select_mode(cx: &mut Context) {
     cx.editor.mode = Mode::Select;
 }
 
-fn exit_select_mode(cx: &mut Context) {
+pub fn exit_select_mode(cx: &mut Context) {
+    if EvilCommands::is_enabled() {
+        // In evil mode, selections are possible in the selection/visual mode only.
+        EvilCommands::collapse_selections(cx, CollapseMode::ToHead);
+    }
+
     if cx.editor.mode == Mode::Select {
         cx.editor.mode = Mode::Normal;
     }
@@ -6193,4 +6217,61 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
         }
     }
     jump_to_label(cx, words, behaviour)
+}
+
+fn evil_move_word_impl<F>(cx: &mut Context, move_fn: F)
+where
+    F: Fn(RopeSlice, Range, usize) -> Range,
+{
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let old_head = range.head;
+        let old_anchor = range.anchor;
+        let mut new_range = move_fn(text, range, count);
+
+        new_range.anchor = match cx.editor.mode {
+            // In select mode, use a sticky anchor and move the head only;
+            // keeping in mind that in select mode, with a single char selected,
+            // the anchor typically points *before* the character.
+            Mode::Select if new_range.head < old_head => old_head.max(old_anchor),
+            Mode::Select => old_head.min(old_anchor),
+            // When not in select mode, just move the cursor and do not select
+            _ => new_range.head,
+        };
+
+        return new_range;
+    });
+
+    doc.set_selection(view.id, selection);
+}
+
+fn evil_prev_word_start(cx: &mut Context) {
+    // TODO: evil-specific implementation in evil.rs
+    evil_move_word_impl(cx, movement::move_prev_word_start);
+    //EvilCommands::prev_word_start(cx);
+}
+
+fn evil_next_word_start(cx: &mut Context) {
+    // TODO: evil-specific implementation in evil.rs
+    evil_move_word_impl(cx, movement::move_next_word_start);
+    //EvilCommands::next_word_start(cx);
+}
+
+fn evil_delete(cx: &mut Context) {
+    EvilCommands::delete(cx, Operation::Delete);
+}
+
+fn evil_delete_immediate(cx: &mut Context) {
+    EvilCommands::delete_immediate(cx);
+}
+
+fn evil_yank(cx: &mut Context) {
+    EvilCommands::yank(cx);
+}
+
+fn evil_change(cx: &mut Context) {
+    EvilCommands::delete(cx, Operation::Change);
 }
