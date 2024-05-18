@@ -2905,7 +2905,10 @@ fn file_picker_in_current_directory(cx: &mut Context) {
 }
 
 fn open_or_focus_explorer(cx: &mut Context) {
-    cx.callback = Some(Box::new(
+    let mut callbacks: Vec<Box<dyn FnOnce(&mut Compositor, &mut compositor::Context<'_>)>> =
+        Vec::with_capacity(1);
+
+    callbacks.push(Box::new(
         |compositor: &mut Compositor, cx: &mut compositor::Context| {
             if let Some(editor) = compositor.find::<ui::EditorView>() {
                 match editor.explorer.as_mut() {
@@ -2918,10 +2921,15 @@ fn open_or_focus_explorer(cx: &mut Context) {
             }
         },
     ));
+
+    cx.callback = callbacks;
 }
 
 fn reveal_file(cx: &mut Context, path: Option<PathBuf>) {
-    cx.callback = Some(Box::new(
+    let mut callbacks: Vec<Box<dyn FnOnce(&mut Compositor, &mut compositor::Context<'_>)>> =
+        Vec::with_capacity(1);
+
+    callbacks.push(Box::new(
         |compositor: &mut Compositor, cx: &mut compositor::Context| {
             if let Some(editor) = compositor.find::<ui::EditorView>() {
                 (|| match editor.explorer.as_mut() {
@@ -2941,6 +2949,8 @@ fn reveal_file(cx: &mut Context, path: Option<PathBuf>) {
             }
         },
     ));
+
+    cx.callback = callbacks;
 }
 
 fn reveal_current_file(cx: &mut Context) {
