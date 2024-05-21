@@ -877,7 +877,7 @@ pub enum PopupBorderConfig {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            evil: true,
+            evil: false,
             scrolloff: 5,
             scroll_lines: 3,
             mouse: true,
@@ -927,6 +927,15 @@ impl Default for Config {
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
         }
+    }
+}
+
+impl Config {
+    pub fn default_evil() -> Self {
+        let mut config = Config::default();
+        config.evil = true;
+        config.statusline.mode = ModeConfig::default_evil();
+        return config;
     }
 }
 

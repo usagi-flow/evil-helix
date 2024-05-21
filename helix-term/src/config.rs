@@ -29,8 +29,8 @@ impl Default for Config {
     fn default() -> Config {
         Config {
             theme: None,
-            keys: keymap::default(),
-            editor: helix_view::editor::Config::default(),
+            keys: keymap::default_evil(),
+            editor: helix_view::editor::Config::default_evil(),
         }
     }
 }
