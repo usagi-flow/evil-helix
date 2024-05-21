@@ -22,9 +22,23 @@ fn main() {
         .filter(|output| output.status.success())
         .and_then(|x| String::from_utf8(x.stdout).ok());
 
+    let git_tag = Command::new("git")
+        .args(["describe", "--abbrev=0"])
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|x| String::from_utf8(x.stdout).ok());
+
     let calver = get_calver();
     let version: Cow<_> = match &git_hash {
-        Some(git_hash) => format!("{} ({})", calver, &git_hash[..8]).into(),
+        Some(git_hash) if git_tag.is_some() => format!(
+            "{} ({}, helix {})",
+            git_tag.unwrap().trim(),
+            &git_hash[..8],
+            calver
+        )
+        .into(),
+        Some(git_hash) => format!("({}, helix {})", &git_hash[..8], calver).into(),
         None => calver.into(),
     };
 
