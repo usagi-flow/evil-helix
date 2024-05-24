@@ -3,12 +3,12 @@ use std::{
     sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use helix_core::{
-    movement::move_next_word_end,
-    movement::{is_word_boundary, move_prev_word_start},
-    Range, Selection, Transaction,
-};
-use helix_view::{document::Mode, input::KeyEvent};
+use helix_core::movement::is_word_boundary;
+use helix_core::movement::move_next_word_end;
+use helix_core::movement::move_prev_word_start;
+use helix_core::{Range, Selection, Transaction};
+use helix_view::document::Mode;
+use helix_view::input::KeyEvent;
 use once_cell::sync::Lazy;
 
 use crate::commands::{enter_insert_mode, exit_select_mode, Context, Extend, Operation};
@@ -20,16 +20,6 @@ enum Command {
     Yank,
     Delete,
 }
-
-//impl Command {
-//    pub fn from_key(e: KeyEvent) -> Option<Self> {
-//        e.char().and_then(|char| match char {
-//            'd' => Some(Command::Delete),
-//            'y' => Some(Command::Yank),
-//            _ => None,
-//        })
-//    }
-//}
 
 impl TryFrom<char> for Command {
     type Error = ();
@@ -44,11 +34,42 @@ impl TryFrom<char> for Command {
 }
 
 #[derive(Eq, PartialEq)]
+enum Modifier {
+    InnerWord,
+}
+
+impl TryFrom<char> for Modifier {
+    type Error = ();
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
+        match value {
+            // :h object-select
+            'i' => Ok(Self::InnerWord),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Eq, PartialEq)]
 enum Motion {
     PrevWordStart,
     NextWordEnd,
     LineStart,
     LineEnd,
+}
+
+impl TryFrom<char> for Motion {
+    type Error = ();
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
+        match value {
+            'w' => Ok(Self::NextWordEnd),
+            'b' => Ok(Self::PrevWordStart),
+            '$' => Ok(Self::LineEnd),
+            '0' => Ok(Self::LineStart),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -59,24 +80,11 @@ pub enum CollapseMode {
     ToHead,
 }
 
-impl TryFrom<char> for Motion {
-    type Error = ();
-
-    fn try_from(value: char) -> Result<Self, Self::Error> {
-        match value {
-            'w' => Ok(Motion::NextWordEnd),
-            'b' => Ok(Motion::PrevWordStart),
-            '$' => Ok(Motion::LineEnd),
-            '0' => Ok(Motion::LineStart),
-            _ => Err(()),
-        }
-    }
-}
-
 struct EvilContext {
     command: Option<Command>,
     motion: Option<Motion>,
     count: Option<usize>,
+    modifiers: Vec<Modifier>,
     set_mode: Option<Mode>,
 }
 
@@ -85,6 +93,7 @@ impl EvilContext {
         self.command = None;
         self.motion = None;
         self.count = None;
+        self.modifiers.clear();
         self.set_mode = None;
     }
 }
@@ -94,6 +103,7 @@ static CONTEXT: Lazy<RwLock<EvilContext>> = Lazy::new(|| {
         command: None,
         motion: None,
         count: None,
+        modifiers: Vec::new(),
         set_mode: None,
     })
 });
@@ -119,13 +129,6 @@ impl EvilCommands {
         doc.set_selection(
             view.id,
             doc.selection(view.id).clone().transform(|mut range| {
-                /*log::warn!(
-                    "Adjusting range (mode: {:?}): {} -> {}",
-                    collapse_mode,
-                    range.anchor,
-                    range.head
-                );*/
-
                 // TODO: when exiting insert mode after appending, we end up on the character _after_ the curson,
                 // while vim returns to the character _before_ the cursor.
 
@@ -155,13 +158,6 @@ impl EvilCommands {
                         }
                     }
                 }
-
-                /*log::warn!(
-                    "- Adjusted range (mode: {:?}): {} -> {}",
-                    collapse_mode,
-                    range.anchor,
-                    range.head
-                );*/
 
                 return range;
             }),
@@ -195,10 +191,16 @@ impl EvilCommands {
                 // TODO: recognize motion keys like w and b
                 // TODO: see https://github.com/helix-editor/helix/blob/823eaad1a118e8865a6400afc22d37e060783d45/helix-term/src/ui/editor.rs#L1331-L1372
 
+                let has_inner_word_modifier =
+                    Self::context().modifiers.contains(&Modifier::InnerWord);
+
                 if let Some(motion) = Self::context().motion.as_ref() {
                     // A motion was specified: Select accordingly
                     // TODO: handle other motion keys as well
                     selection = match motion {
+                        Motion::PrevWordStart | Motion::NextWordEnd if has_inner_word_modifier => {
+                            Self::get_bidirectional_word_based_selection(cx).ok()
+                        }
                         Motion::PrevWordStart | Motion::NextWordEnd => {
                             Self::get_word_based_selection(cx, motion).ok()
                         }
@@ -207,8 +209,11 @@ impl EvilCommands {
                         }
                     };
                 } else {
-                    // No motion was specified: Perform a line-based selection
-                    selection = Some(Self::get_full_line_based_selection(cx));
+                    // The inner word modifier isn't valid for a line-based selection
+                    if !has_inner_word_modifier {
+                        // No motion was specified: Perform a line-based selection
+                        selection = Some(Self::get_full_line_based_selection(cx));
+                    }
                 }
             }
             helix_view::document::Mode::Select => {
@@ -247,6 +252,17 @@ impl EvilCommands {
 
             Range::new(anchor, head)
         });
+    }
+
+    fn get_bidirectional_word_based_selection(cx: &mut Context) -> Result<Selection, String> {
+        let (view, doc) = current!(cx.editor);
+
+        Ok(doc.selection(view.id).clone().transform(|range| {
+            let text = doc.text().slice(..);
+            let range = move_prev_word_start(text, range, 1);
+            let range = move_next_word_end(text, range, 1);
+            return range;
+        }))
     }
 
     fn get_word_based_selection(cx: &mut Context, motion: &Motion) -> Result<Selection, String> {
@@ -531,19 +547,31 @@ impl EvilCommands {
             }
         }
 
-        // Is the command being executed with a motion key?
-        // Check this after the count check, because "0" could imply increasing the count,
-        // and if it doesn't, it's probably a motion key.
-        if let Some(motion) = e.char().and_then(|c| Motion::try_from(c).ok()) {
-            log::info!(
-                "Key callback: Detected motion key '{}'",
-                e.char().unwrap_or('?')
-            );
+        if let Some(c) = e.char() {
+            // Is the command receiving a modifier?
+            if let Some(modifier) = Modifier::try_from(c).ok() {
+                log::info!("Key callback: Detected modifier key '{}'", c);
 
-            Self::context_mut().motion = Some(motion);
-            // TODO; a motion key should immediately execute the command
-            Self::evil_command(cx, active_command, set_mode);
-            return;
+                Self::context_mut().modifiers.push(modifier);
+
+                cx.on_next_key_callback = Some(Box::new(move |cx: &mut Context, e: KeyEvent| {
+                    Self::evil_command_key_callback(cx, e);
+                }));
+
+                return;
+            }
+
+            // Is the command being executed with a motion key?
+            // Check this after the count check, because "0" could imply increasing the count,
+            // and if it doesn't, it's probably a motion key.
+            if let Some(motion) = e.char().and_then(|c| Motion::try_from(c).ok()) {
+                log::info!("Key callback: Detected motion key '{}'", c);
+
+                Self::context_mut().motion = Some(motion);
+                // TODO; a motion key should immediately execute the command
+                Self::evil_command(cx, active_command, set_mode);
+                return;
+            }
         }
 
         // A command was initiated, but an unrelated key was pressed: cancel the command.
