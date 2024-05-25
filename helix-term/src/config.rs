@@ -82,7 +82,7 @@ impl Config {
                 }
 
                 let editor = match (global.editor, local.editor) {
-                    (None, None) => helix_view::editor::Config::default(),
+                    (None, None) => helix_view::editor::Config::default_evil(),
                     (None, Some(val)) | (Some(val), None) => {
                         val.try_into().map_err(ConfigLoadError::BadConfig)?
                     }
@@ -116,7 +116,7 @@ impl Config {
                     theme: config.theme,
                     keys,
                     editor: config.editor.map_or_else(
-                        || Ok(helix_view::editor::Config::default()),
+                        || Ok(helix_view::editor::Config::default_evil()),
                         |val| val.try_into().map_err(ConfigLoadError::BadConfig),
                     )?,
                 }

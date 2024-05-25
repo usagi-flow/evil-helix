@@ -487,6 +487,31 @@ impl Default for StatusLineConfig {
     }
 }
 
+impl StatusLineConfig {
+    pub fn default_evil() -> Self {
+        use StatusLineElement as E;
+
+        Self {
+            left: vec![E::Mode, E::Spacer, E::VersionControl, E::Spacer, E::Spinner],
+            center: vec![
+                E::FileName,
+                E::ReadOnlyIndicator,
+                E::FileModificationIndicator,
+            ],
+            right: vec![
+                E::Diagnostics,
+                E::Selections,
+                E::Register,
+                E::Position,
+                E::FileEncoding,
+                E::FileType,
+            ],
+            separator: String::from("│"),
+            mode: ModeConfig::default_evil(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct ModeConfig {
@@ -934,7 +959,8 @@ impl Config {
     pub fn default_evil() -> Self {
         let mut config = Config::default();
         config.evil = true;
-        config.statusline.mode = ModeConfig::default_evil();
+        config.statusline = StatusLineConfig::default_evil();
+        config.color_modes = true;
         return config;
     }
 }
