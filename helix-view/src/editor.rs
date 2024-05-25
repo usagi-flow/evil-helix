@@ -560,6 +560,15 @@ pub struct SmartTabConfig {
 impl Default for SmartTabConfig {
     fn default() -> Self {
         SmartTabConfig {
+            enable: true,
+            supersede_menu: false,
+        }
+    }
+}
+
+impl SmartTabConfig {
+    pub fn default_evil() -> Self {
+        SmartTabConfig {
             enable: false,
             supersede_menu: false,
         }
@@ -710,6 +719,31 @@ impl Default for StatusLineConfig {
             mode: ModeConfig::default(),
             diagnostics: vec![Severity::Warning, Severity::Error],
             workspace_diagnostics: vec![Severity::Warning, Severity::Error],
+        }
+    }
+}
+
+impl StatusLineConfig {
+    pub fn default_evil() -> Self {
+        use StatusLineElement as E;
+
+        Self {
+            left: vec![E::Mode, E::Spacer, E::VersionControl, E::Spacer, E::Spinner],
+            center: vec![
+                E::FileName,
+                E::ReadOnlyIndicator,
+                E::FileModificationIndicator,
+            ],
+            right: vec![
+                E::Diagnostics,
+                E::Selections,
+                E::Register,
+                E::Position,
+                E::FileEncoding,
+                E::FileType,
+            ],
+            separator: String::from("│"),
+            mode: ModeConfig::default_evil(),
         }
     }
 }
@@ -1261,7 +1295,10 @@ impl Config {
     pub fn default_evil() -> Self {
         let mut config = Config::default();
         config.evil = true;
-        config.statusline.mode = ModeConfig::default_evil();
+        config.statusline = StatusLineConfig::default_evil();
+        config.color_modes = true;
+        config.insert_final_newline = false;
+        config.smart_tab = Some(SmartTabConfig::default_evil());
         return config;
     }
 }
