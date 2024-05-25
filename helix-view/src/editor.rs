@@ -970,6 +970,7 @@ impl Config {
         config.evil = true;
         config.statusline = StatusLineConfig::default_evil();
         config.color_modes = true;
+        config.insert_final_newline = false;
         config.smart_tab = Some(SmartTabConfig::default_evil());
         return config;
     }
