@@ -350,6 +350,15 @@ pub struct SmartTabConfig {
 impl Default for SmartTabConfig {
     fn default() -> Self {
         SmartTabConfig {
+            enable: true,
+            supersede_menu: false,
+        }
+    }
+}
+
+impl SmartTabConfig {
+    pub fn default_evil() -> Self {
+        SmartTabConfig {
             enable: false,
             supersede_menu: false,
         }
@@ -961,6 +970,7 @@ impl Config {
         config.evil = true;
         config.statusline = StatusLineConfig::default_evil();
         config.color_modes = true;
+        config.smart_tab = Some(SmartTabConfig::default_evil());
         return config;
     }
 }
