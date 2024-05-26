@@ -3,9 +3,9 @@ use std::{
     sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use helix_core::movement::is_word_boundary;
 use helix_core::movement::move_next_word_end;
 use helix_core::movement::move_prev_word_start;
+use helix_core::movement::{is_word_boundary, Direction};
 use helix_core::{Range, Selection, Transaction};
 use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
@@ -538,7 +538,7 @@ impl EvilCommands {
                     evil_context.count.unwrap()
                 );
 
-                // TODO: doesn't seem to work
+                // TODO: cx.on_next_key()
                 cx.on_next_key_callback = Some(Box::new(move |cx: &mut Context, e: KeyEvent| {
                     Self::evil_command_key_callback(cx, e);
                 }));
@@ -554,6 +554,7 @@ impl EvilCommands {
 
                 Self::context_mut().modifiers.push(modifier);
 
+                // TODO: cx.on_next_key()
                 cx.on_next_key_callback = Some(Box::new(move |cx: &mut Context, e: KeyEvent| {
                     Self::evil_command_key_callback(cx, e);
                 }));
@@ -603,5 +604,23 @@ impl EvilCommands {
         let selection = Self::get_character_based_selection(cx);
         Self::delete_selection(cx, &selection, false);
         exit_select_mode(cx);
+    }
+
+    pub fn find_char<F>(cx: &mut Context, base_fn: F, direction: Direction, inclusive: bool)
+    where
+        F: FnOnce(&mut Context, Direction, bool, bool),
+    {
+        let extend = false;
+        base_fn(cx, direction, inclusive, extend);
+        let inner_callback = cx.on_next_key_callback.take();
+
+        if let Some(inner_callback) = inner_callback {
+            cx.on_next_key(move |cx, event| {
+                inner_callback(cx, event);
+                Self::collapse_selections(cx, CollapseMode::ToHead);
+            })
+        } else {
+            log::warn!("The find_char base function did not set a key callback");
+        }
     }
 }
