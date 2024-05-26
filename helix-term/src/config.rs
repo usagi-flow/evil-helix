@@ -225,7 +225,7 @@ mod tests {
             A-F12 = "move_next_word_end"
         "#;
 
-        let mut keys = keymap::default();
+        let mut keys = keymap::default_evil();
         merge_keys(
             &mut keys,
             hashmap! {
