@@ -525,6 +525,10 @@ impl MappableCommand {
         evil_delete_immediate, "Delete immediately (evil)",
         evil_yank, "Yank (evil)",
         evil_change, "Change (evil)",
+        evil_find_till_char, "Move till next occurrence of char (evil)",
+        evil_find_next_char, "Move to next occurrence of char (evil)",
+        evil_till_prev_char, "Move till previous occurrence of char (evil)",
+        evil_find_prev_char, "Move to previous occurrence of char (evil)",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
@@ -6274,4 +6278,20 @@ fn evil_yank(cx: &mut Context) {
 
 fn evil_change(cx: &mut Context) {
     EvilCommands::delete(cx, Operation::Change);
+}
+
+fn evil_find_till_char(cx: &mut Context) {
+    EvilCommands::find_char(cx, find_char, Direction::Forward, false);
+}
+
+fn evil_find_next_char(cx: &mut Context) {
+    EvilCommands::find_char(cx, find_char, Direction::Forward, true)
+}
+
+fn evil_till_prev_char(cx: &mut Context) {
+    EvilCommands::find_char(cx, find_char, Direction::Backward, false)
+}
+
+fn evil_find_prev_char(cx: &mut Context) {
+    EvilCommands::find_char(cx, find_char, Direction::Backward, true)
 }
