@@ -65,8 +65,10 @@ impl TryFrom<char> for Motion {
 
     fn try_from(value: char) -> Result<Self, Self::Error> {
         match value {
-            'w' => Ok(Self::NextWordEnd),
+            'w' | 'e' => Ok(Self::NextWordEnd),
             'b' => Ok(Self::PrevWordStart),
+            'W' | 'E' => Ok(Self::NextLongWordEnd),
+            'B' => Ok(Self::PrevLongWordStart),
             '$' => Ok(Self::LineEnd),
             '0' => Ok(Self::LineStart),
             _ => Err(()),
