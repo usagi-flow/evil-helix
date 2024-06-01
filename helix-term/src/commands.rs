@@ -522,6 +522,9 @@ impl MappableCommand {
         evil_prev_word_start, "Previous word start (evil)",
         evil_next_word_start, "Next word start (evil)",
         evil_next_word_end, "Next word end (evil)",
+        evil_prev_long_word_start, "Previous long word start (evil)",
+        evil_next_long_word_start, "Next long word start (evil)",
+        evil_next_long_word_end, "Next long word end (evil)",
         evil_delete, "Delete (evil)",
         evil_delete_immediate, "Delete immediately (evil)",
         evil_yank, "Yank (evil)",
@@ -6268,6 +6271,21 @@ fn evil_next_word_start(cx: &mut Context) {
 fn evil_next_word_end(cx: &mut Context) {
     // TODO: evil-specific implementation in evil.rs
     evil_move_word_impl(cx, movement::move_next_word_end);
+}
+
+fn evil_prev_long_word_start(cx: &mut Context) {
+    // TODO: evil-specific implementation in evil.rs
+    evil_move_word_impl(cx, movement::move_prev_long_word_start);
+}
+
+fn evil_next_long_word_start(cx: &mut Context) {
+    // TODO: evil-specific implementation in evil.rs
+    evil_move_word_impl(cx, movement::move_next_long_word_start);
+}
+
+fn evil_next_long_word_end(cx: &mut Context) {
+    // TODO: evil-specific implementation in evil.rs
+    evil_move_word_impl(cx, movement::move_next_long_word_end);
 }
 
 fn evil_delete(cx: &mut Context) {
