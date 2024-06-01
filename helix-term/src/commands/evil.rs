@@ -230,6 +230,7 @@ impl EvilCommands {
 
     fn get_character_based_selection(cx: &mut Context) -> Selection {
         let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
 
         // For each cursor, select one or more characters forward or backward according
         // to the count in the evil context and the motion respectively.
@@ -250,15 +251,15 @@ impl EvilCommands {
 
             let head = head + count;
 
-            Range::new(anchor, head)
+            Range::new(text.len_chars().min(anchor), text.len_chars().min(head))
         });
     }
 
     fn get_bidirectional_word_based_selection(cx: &mut Context) -> Result<Selection, String> {
         let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
 
         Ok(doc.selection(view.id).clone().transform(|range| {
-            let text = doc.text().slice(..);
             let range = move_prev_word_start(text, range, 1);
             let range = move_next_word_end(text, range, 1);
             return range;
@@ -268,6 +269,7 @@ impl EvilCommands {
     fn get_word_based_selection(cx: &mut Context, motion: &Motion) -> Result<Selection, String> {
         let (view, doc) = current!(cx.editor);
         let mut error: Option<String> = None;
+        let text = doc.text().slice(..);
 
         // For each cursor, select one or more words forward or backward according
         // to the count in the evil context and the motion respectively.
@@ -280,8 +282,6 @@ impl EvilCommands {
                     return range;
                 }
             };
-
-            let text = doc.text().slice(..);
 
             let char_current = text.char(range.anchor);
             let char_previous = match range.anchor > 0 {
@@ -327,7 +327,10 @@ impl EvilCommands {
                 false => move_prev_word_start(text, range, count),
             };
 
-            Range::new(anchor, range.head)
+            Range::new(
+                text.len_chars().min(anchor),
+                text.len_chars().min(range.head),
+            )
         });
 
         if error.is_none() {
