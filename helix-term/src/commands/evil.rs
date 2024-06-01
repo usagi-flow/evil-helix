@@ -620,7 +620,11 @@ impl EvilCommands {
         if let Some(inner_callback) = inner_callback {
             cx.on_next_key(move |cx, event| {
                 inner_callback(cx, event);
-                Self::collapse_selections(cx, CollapseMode::ToHead);
+
+                match Self::get_mode(cx) {
+                    Mode::Normal => Self::collapse_selections(cx, CollapseMode::ToHead),
+                    _ => {}
+                }
             })
         } else {
             log::warn!("The find_char base function did not set a key callback");
