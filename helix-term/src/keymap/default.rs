@@ -377,8 +377,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "j" => extend_line_down,
             "w" => extend_to_word,
         },
-
-        "x" => evil_delete_immediate,
     }));
     let insert = keymap!({ "Insert mode"
         "esc" => normal_mode,
@@ -412,6 +410,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         Mode::Insert => insert,
     )
 }
+
 pub fn default_evil() -> HashMap<Mode, KeyTrie> {
     let normal = keymap!({ "Normal mode"
         "h" | "left" => move_char_left,
@@ -746,7 +745,7 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         "x" => evil_delete_immediate,
         "y" => evil_yank,
         "b" => evil_prev_word_start,
-        // TODO: "e" => evil_next_word_end,
+        "e" => evil_next_word_end,
         "w" => evil_next_word_start,
         // TODO: "B" => evil_prev_long_word_start,
         // TODO: "E" => evil_next_long_word_end,
