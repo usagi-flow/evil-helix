@@ -54,6 +54,8 @@ impl TryFrom<char> for Modifier {
 enum Motion {
     PrevWordStart,
     NextWordEnd,
+    PrevLongWordStart,
+    NextLongWordEnd,
     LineStart,
     LineEnd,
 }
@@ -202,6 +204,16 @@ impl EvilCommands {
                             Self::get_bidirectional_word_based_selection(cx).ok()
                         }
                         Motion::PrevWordStart | Motion::NextWordEnd => {
+                            Self::get_word_based_selection(cx, motion).ok()
+                        }
+                        Motion::PrevLongWordStart | Motion::NextLongWordEnd
+                            if has_inner_word_modifier =>
+                        {
+                            // TODO: this doesn't support long words yet
+                            Self::get_bidirectional_word_based_selection(cx).ok()
+                        }
+                        Motion::PrevLongWordStart | Motion::NextLongWordEnd => {
+                            // TODO: this doesn't support long words yet
                             Self::get_word_based_selection(cx, motion).ok()
                         }
                         Motion::LineStart | Motion::LineEnd => {

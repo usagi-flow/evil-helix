@@ -738,9 +738,9 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         "b" => evil_prev_word_start,
         "e" => evil_next_word_end,
         "w" => evil_next_word_start,
-        // TODO: "B" => evil_prev_long_word_start,
-        // TODO: "E" => evil_next_long_word_end,
-        // TODO: "W" => evil_next_long_word_start,
+        "B" => evil_prev_long_word_start,
+        "E" => evil_next_long_word_end,
+        "W" => evil_next_long_word_start,
 
         "0" => goto_line_start,
         "$" => goto_line_end,
