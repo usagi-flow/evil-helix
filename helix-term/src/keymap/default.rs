@@ -505,6 +505,7 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
             "a" => select_textobject_around,
             "i" => select_textobject_inner,
         },
+        "%" => match_brackets,
         "[" => { "Left bracket"
             "d" => goto_prev_diag,
             "D" => goto_first_diag,
