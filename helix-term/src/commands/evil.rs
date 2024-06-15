@@ -139,26 +139,26 @@ impl EvilCommands {
                 match collapse_mode {
                     CollapseMode::Forward => {
                         let end = range.anchor.max(range.head);
-                        range.anchor = 0.max(end - 1);
+                        range.anchor = 0.max(end.saturating_sub(1));
                         range.head = end;
                     }
                     CollapseMode::Backward => {
                         let start = range.anchor.min(range.head);
                         range.anchor = start;
-                        range.head = start + 1;
+                        range.head = start.saturating_add(1);
                     }
                     CollapseMode::ToAnchor => {
                         if range.head > range.anchor {
-                            range.head = range.anchor + 1;
+                            range.head = range.anchor.saturating_add(1);
                         } else {
-                            range.head = 0.max(range.anchor - 1);
+                            range.head = 0.max(range.anchor.saturating_sub(1));
                         }
                     }
                     CollapseMode::ToHead => {
                         if range.head > range.anchor {
-                            range.anchor = 0.max(range.head - 1);
+                            range.anchor = 0.max(range.head.saturating_sub(1));
                         } else {
-                            range.anchor = range.head + 1;
+                            range.anchor = range.head.saturating_add(1);
                         }
                     }
                 }
