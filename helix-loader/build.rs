@@ -64,6 +64,7 @@ fn main() {
         .ok()
         .filter(|output| output.status.success())
         .and_then(|x| String::from_utf8(x.stdout).ok())
+        .map(|x| x.trim().to_string())
     else {
         return;
     };
@@ -81,6 +82,7 @@ fn main() {
         .ok()
         .filter(|output| output.status.success())
         .and_then(|x| String::from_utf8(x.stdout).ok())
+        .map(|x| x.trim().to_string())
     else {
         return;
     };

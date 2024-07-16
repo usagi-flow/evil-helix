@@ -1381,13 +1381,14 @@ impl Syntax {
                 let depth = layer.depth + 1;
                 // TODO: can't inline this since matches borrows self.layers
                 for (config, ranges) in injections {
+                    let parent = Some(layer_id);
                     let new_layer = LanguageLayer {
                         tree: None,
                         config,
                         depth,
                         ranges,
                         flags: LayerUpdateFlags::empty(),
-                        parent: Some(layer_id),
+                        parent: None,
                     };
 
                     // Find an identical existing layer
@@ -1399,6 +1400,7 @@ impl Syntax {
 
                     // ...or insert a new one.
                     let layer_id = layer.unwrap_or_else(|| self.layers.insert(new_layer));
+                    self.layers[layer_id].parent = parent;
 
                     queue.push_back(layer_id);
                 }
