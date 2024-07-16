@@ -79,9 +79,12 @@ This project is a "soft fork", i.e. it remains compatible with the upstream and 
 
 Whether this project remains in this state will depend on how much this project's philosophy and the upstream project diverge, although a hard fork should be considered as a last resort.
 
+[Compare](https://github.com/helix-editor/helix/compare/master...usagi-flow:evil-helix:main) our changes vs upstream.
+
 ### Small and regular version releases
 
 Considering the kind and frequency of changes to this repository, it makes sense to release small changes often, rather than holding features back in large releases. Releases are currently tagged on-demand.
+
 
 ## Project goals
 
