@@ -99,3 +99,5 @@ Considering the kind and frequency of changes to this repository, it makes sense
 ## Development
 
 Keep in mind the `main` branch is regularly being rebased onto the upstream `master` branch.
+
+[Compare](https://github.com/helix-editor/helix/compare/master...usagi-flow:evil-helix:main) our changes vs upstream.
