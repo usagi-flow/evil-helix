@@ -73,6 +73,10 @@ jobs:
         run: "rustup target add ${{ matrix.target.id }}"
         if: ${{ !matrix.target.native}}
 
+      - name: Install dependencies
+        run: "sudo apt update && sudo apt install -y clang"
+        if: ${{ !matrix.target.native}}
+
       - name: Build (cross)
         # TODO: let's first see if this works
         #run: cargo xwin build --target ${{ matrix.target.id }} --profile release
