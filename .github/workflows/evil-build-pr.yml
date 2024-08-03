@@ -75,8 +75,8 @@ jobs:
 
       - name: Build (cross)
         # TODO: let's first see if this works
-        run: cargo xwin build --target ${{ matrix.target.id }} --profile release
-        #run: cargo zigbuild --target ${{ matrix.target.id }} --profile release
+        #run: cargo xwin build --target ${{ matrix.target.id }} --profile release
+        run: cargo zigbuild --target ${{ matrix.target.id }} --profile release
         #run: cross build --target ${{ matrix.target.id }} --profile release
         if: ${{ !matrix.target.native}}
 
