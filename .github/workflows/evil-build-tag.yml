@@ -11,6 +11,7 @@ env:
   RUST_BACKTRACE: 1
   HELIX_LOG_LEVEL: info
   HELIX_DEFAULT_RUNTIME: /opt/helix/runtime
+  BINSTALL_DISABLE_TELEMETRY: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -48,6 +49,10 @@ jobs:
             name: aarch64-macos
             native: true
             os: macos-latest
+          - id: x86_64-pc-windows-gnu
+            name: amd64-windows
+            native: false
+            os: ubuntu-latest
 
     runs-on: ${{ matrix.target.os }}
 
@@ -85,7 +90,11 @@ jobs:
       - name: "Prepare dist"
         run: |
           mkdir -pv dist/helix
-          mv -v target/${{ matrix.target.id }}/opt/hx dist/helix/
+          if [ -f target/${{ matrix.target.id }}/opt/hx ]; then
+            mv -v target/${{ matrix.target.id }}/opt/hx dist/helix/
+          else
+            mv -v target/${{ matrix.target.id }}/opt/hx.exe dist/helix/
+          fi
           rm -rf runtime/grammars/sources
           mv -v runtime dist/helix/
           cd dist && tar -cvzf helix-${{ matrix.target.name }}.tar.gz helix

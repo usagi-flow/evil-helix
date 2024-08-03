@@ -10,6 +10,7 @@ env:
   RUST_BACKTRACE: 1
   HELIX_LOG_LEVEL: info
   HELIX_DEFAULT_RUNTIME: /opt/helix/runtime
+  BINSTALL_DISABLE_TELEMETRY: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -27,6 +28,11 @@ jobs:
             name: amd64-linux
             native: true
             os: ubuntu-latest
+          # TODO: move this to evil-build-tag
+          - id: x86_64-pc-windows-gnu
+            name: amd64-windows
+            native: true
+            os: ubuntu-latest
 
     runs-on: ${{ matrix.target.os }}
 
@@ -39,17 +45,36 @@ jobs:
         with:
           targets: ${{ matrix.target.id }}
 
+      - name: Install binstall
+        uses: "cargo-bins/cargo-binstall@v1.6.5"
+        if: ${{ !matrix.target.native}}
+
+      - name: "Install cross"
+        run: "cargo binstall -y cross"
+        if: ${{ !matrix.target.native}}
+
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "build"
 
       - name: Build
-        run: cargo build --target ${{ matrix.target.id }} --release
+        run: |
+          rustup target add ${{ matrix.target.id }}
+          cargo build --target ${{ matrix.target.id }} --profile release
+        if: ${{ matrix.target.native}}
+
+      - name: Build (cross)
+        run: cross build --target ${{ matrix.target.id }} --profile release
+        if: ${{ !matrix.target.native}}
 
       - name: "Prepare dist"
         run: |
           mkdir -pv dist/helix
-          mv -v target/${{ matrix.target.id }}/release/hx dist/helix/
+          if [ -f target/${{ matrix.target.id }}/release/hx ]; then
+            mv -v target/${{ matrix.target.id }}/release/hx dist/helix/
+          else
+            mv -v target/${{ matrix.target.id }}/release/hx.exe dist/helix/
+          fi
           rm -rf runtime/grammars/sources
           mv -v runtime dist/helix/
           cd dist && tar -cvzf helix-${{ matrix.target.name }}.tar.gz helix
