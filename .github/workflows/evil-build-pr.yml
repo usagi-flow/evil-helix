@@ -74,7 +74,7 @@ jobs:
         if: ${{ !matrix.target.native}}
 
       - name: Install dependencies
-        run: "sudo apt update && sudo apt install -y clang"
+        run: "sudo apt update && sudo apt install -y clang zig"
         if: ${{ !matrix.target.native}}
 
       - name: Build (cross)
