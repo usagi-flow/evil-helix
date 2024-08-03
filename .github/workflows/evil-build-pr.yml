@@ -55,8 +55,8 @@ jobs:
         run: |
           # TODO: let's first see if this works
           #cargo binstall -y cargo-xwin
-          cargo binstall -y cargo-zigbuild
-          #cargo binstall -y cross
+          #cargo binstall -y cargo-zigbuild
+          cargo binstall -y cross
         if: ${{ !matrix.target.native}}
 
       - uses: Swatinem/rust-cache@v2
@@ -74,14 +74,14 @@ jobs:
         if: ${{ !matrix.target.native}}
 
       - name: Install dependencies
-        run: "sudo apt update && sudo apt install -y clang zig"
+        run: "sudo apt update && sudo apt install -y clang"
         if: ${{ !matrix.target.native}}
 
       - name: Build (cross)
         # TODO: let's first see if this works
         #run: cargo xwin build --target ${{ matrix.target.id }} --profile release
-        run: cargo zigbuild --target ${{ matrix.target.id }} --profile release
-        #run: cross build --target ${{ matrix.target.id }} --profile release
+        #run: cargo zigbuild --target ${{ matrix.target.id }} --profile release
+        run: cross build --target ${{ matrix.target.id }} --profile release
         if: ${{ !matrix.target.native}}
 
       - name: "Prepare dist"
