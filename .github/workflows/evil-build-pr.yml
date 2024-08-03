@@ -31,7 +31,7 @@ jobs:
           # TODO: move this to evil-build-tag
           - id: x86_64-pc-windows-gnu
             name: amd64-windows
-            native: true
+            native: false
             os: ubuntu-latest
 
     runs-on: ${{ matrix.target.os }}
