@@ -29,7 +29,9 @@ jobs:
             native: true
             os: ubuntu-latest
           # TODO: move this to evil-build-tag
-          - id: x86_64-pc-windows-gnu
+          # TODO: let's first see if this works
+          - id: x86_64-pc-windows-msvc
+          #- id: x86_64-pc-windows-gnu
             name: amd64-windows
             native: false
             os: ubuntu-latest
@@ -52,7 +54,8 @@ jobs:
       - name: "Install cross"
         run: |
           # TODO: let's first see if this works
-          cargo binstall -y cargo-zigbuild
+          cargo binstall -y cargo-xwin
+          #cargo binstall -y cargo-zigbuild
           #cargo binstall -y cross
         if: ${{ !matrix.target.native}}
 
@@ -66,9 +69,14 @@ jobs:
           cargo build --target ${{ matrix.target.id }} --profile release
         if: ${{ matrix.target.native}}
 
+      - name: Load rust target
+        run: "rustup target add ${{ matrix.target.id }}"
+        if: ${{ !matrix.target.native}}
+
       - name: Build (cross)
         # TODO: let's first see if this works
-        run: cargo zigbuild --target ${{ matrix.target.id }} --profile release
+        run: cargo xwin build --target ${{ matrix.target.id }} --profile release
+        #run: cargo zigbuild --target ${{ matrix.target.id }} --profile release
         #run: cross build --target ${{ matrix.target.id }} --profile release
         if: ${{ !matrix.target.native}}
 
