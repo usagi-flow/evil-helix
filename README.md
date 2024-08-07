@@ -46,7 +46,6 @@ These are the current differences compared to the upstream project:
 -	Basic Vim modeline support ([#3](https://github.com/usagi-flow/evil-helix/pull/3))
 -	Adjusted defaults ([511060a](https://github.com/usagi-flow/evil-helix/commit/511060abcfcbe9377ec50e8a0ecaf4c0660776bb)):
 	-	The Helix "SEL" mode is called "VIS"
-	-	The default theme is `catppuccin_macchiato`
 	-	Smart tab is disabled by default
 -	If `color_modes` is enabled, color the file type in the statusline as well ([5503542](https://github.com/usagi-flow/evil-helix/commit/5503542c0314936ea91464f2944666ed42fea86c))
 -	Minimalistic window separator ([dd990ca](https://github.com/usagi-flow/evil-helix/commit/dd990cad1cb92a024321aca19728c68cb066dd09))
