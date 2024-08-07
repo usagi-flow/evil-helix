@@ -99,4 +99,4 @@ Considering the kind and frequency of changes to this repository, it makes sense
 
 ## Development
 
-Keep in mind the `main` branch is regularly being rebased onto the upstream `master` branch.
+Keep in mind the `main` branch may be rebased onto the upstream `master` branch.
