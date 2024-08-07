@@ -50,6 +50,13 @@ These are the current differences compared to the upstream project:
 -	If `color_modes` is enabled, color the file type in the statusline as well ([5503542](https://github.com/usagi-flow/evil-helix/commit/5503542c0314936ea91464f2944666ed42fea86c))
 -	Minimalistic window separator ([dd990ca](https://github.com/usagi-flow/evil-helix/commit/dd990cad1cb92a024321aca19728c68cb066dd09))
 
+Moreover, evil-helix introduces the `editor.evil` option, which is `true` by default. It can be set to false to completely deactivate evil-helix behavior without having to use a different build:
+
+```toml
+[editor]
+evil = true # Default; set this to `false` to disable evil-helix behavior
+```
+
 ## Project philosophy
 
 ### Configurable features instead of plugins
