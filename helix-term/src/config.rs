@@ -187,7 +187,7 @@ impl Config {
                 .expect("Incorrect type for `editor.config`, expected `bool`");
         }
 
-        log::info!("Evil mode not set in local/global config");
+        log::debug!("Evil mode not explicitly set in local/global config, will enable default");
         return true;
     }
 
