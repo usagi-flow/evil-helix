@@ -544,16 +544,12 @@ fn build_tree_sitter_library(
         }
         command.arg("-xc").arg("-std=c11").arg(parser_path);
 
-        // HACK: relro is a linux hardening feature;
-        // it makes no sense (and tends to cause issues) when trying to enable for other targets
-        #[cfg(target_os = "linux")]
-        command.arg("-Wl,-z,relro,-z,now");
-        /*if cfg!(all(
+        if cfg!(all(
             unix,
-            not(any(target_os = "macos", target_os = "illumos", target_os = "windows"))
+            not(any(target_os = "macos", target_os = "illumos"))
         )) {
             command.arg("-Wl,-z,relro,-z,now");
-        }*/
+        }
     }
 
     let output = command

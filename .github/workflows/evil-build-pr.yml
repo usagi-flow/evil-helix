@@ -77,6 +77,11 @@ jobs:
         run: "sudo apt update && sudo apt install -y clang"
         if: ${{ !matrix.target.native}}
 
+      - name: Patch grammar build arguments
+        run: |
+          sed -i 's/command.arg("-Wl,-z,relro,-z,now");//g' helix-loader/src/grammar.rs
+        if: ${{ matrix.id == 'x86_64-pc-windows-gnu' }}
+
       - name: Build (cross)
         # TODO: let's first see if this works
         #run: cargo xwin build --target ${{ matrix.target.id }} --profile release
