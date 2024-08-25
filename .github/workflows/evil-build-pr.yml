@@ -73,6 +73,7 @@ jobs:
         if: ${{ !matrix.target.native}}
 
       - name: "Prepare dist"
+        shell: bash
         run: |
           mkdir -pv dist/helix
           if [ -f target/${{ matrix.target.id }}/release/hx ]; then
