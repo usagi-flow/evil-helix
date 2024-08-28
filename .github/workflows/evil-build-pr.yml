@@ -82,7 +82,7 @@ jobs:
           if [[ "$RUNNER_OS" != "Windows" ]]; then
             tar -cvzf "evil-helix-${{ matrix.target.name }}.tar.gz" helix
           else
-            zip "evil-helix-${{ matrix.target.name }}.zip" helix
+            tar -a -c -f "evil-helix-${{ matrix.target.name }}.zip" helix
           fi
 
       - name: "Upload artifacts"
