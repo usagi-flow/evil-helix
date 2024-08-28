@@ -79,14 +79,15 @@ jobs:
           mv -v runtime dist/helix/
           cd dist
 
-          if [[ "$RUNNER_OS" != "Windows" ]]; then
-            tar -cvzf "evil-helix-${{ matrix.target.name }}.tar.gz" helix
-          else
-            tar -a -c -f "evil-helix-${{ matrix.target.name }}.zip" helix
-          fi
+          #if [[ "$RUNNER_OS" != "Windows" ]]; then
+          #  tar -cvzf "evil-helix-${{ matrix.target.name }}.tar.gz" helix
+          #else
+          #  tar -a -c -f "evil-helix-${{ matrix.target.name }}.zip" helix
+          #fi
 
       - name: "Upload artifacts"
         uses: actions/upload-artifact@v4
         with:
           name: "evil-helix-${{ matrix.target.name }}"
-          path: "dist/evil-helix-${{ matrix.target.name }}.*"
+          path: "dist/helix"
+          #path: "dist/evil-helix-${{ matrix.target.name }}.*"
