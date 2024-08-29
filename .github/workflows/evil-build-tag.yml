@@ -68,11 +68,11 @@ jobs:
 
       - name: Install binstall
         uses: "cargo-bins/cargo-binstall@v1.6.5"
-        if: ${{ !matrix.target.native}}
+        if: ${{ !matrix.target.native }}
 
       - name: "Install cross"
         run: "cargo binstall -y cross"
-        if: ${{ !matrix.target.native}}
+        if: ${{ !matrix.target.native }}
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -82,11 +82,11 @@ jobs:
         run: |
           rustup target add ${{ matrix.target.id }}
           cargo build --target ${{ matrix.target.id }} --profile $BUILD_PROFILE
-        if: ${{ matrix.target.native}}
+        if: ${{ matrix.target.native }}
 
       - name: Build (cross)
         run: cross build --target ${{ matrix.target.id }} --profile $BUILD_PROFILE
-        if: ${{ !matrix.target.native}}
+        if: ${{ !matrix.target.native }}
 
       - name: "Prepare dist"
         shell: bash
@@ -110,12 +110,14 @@ jobs:
         with:
           name: "evil-helix-${{ matrix.target.name }}"
           path: "dist/evil-helix-${{ matrix.target.name }}.tar.gz"
+        if: ${{ matrix.target.id != 'x86_64-pc-windows-gnu' }}
 
       - name: "Upload artifacts (zip)"
         uses: actions/upload-artifact@v4
         with:
           name: "evil-helix-${{ matrix.target.name }}"
           path: "dist/helix"
+        if: ${{ matrix.target.id == 'x86_64-pc-windows-gnu' }}
 
       - name: Release suffix
         id: release-suffix
