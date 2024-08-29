@@ -8,6 +8,7 @@ permissions: write-all
 
 env:
   RUST_BACKTRACE: 1
+  RUST_BUILD_PROFILE: release
   HELIX_LOG_LEVEL: info
   HELIX_DEFAULT_RUNTIME: /opt/helix/runtime
   BINSTALL_DISABLE_TELEMETRY: true
@@ -59,21 +60,21 @@ jobs:
       - name: Build
         run: |
           rustup target add ${{ matrix.target.id }}
-          cargo build --target ${{ matrix.target.id }} --profile release
+          cargo build --target ${{ matrix.target.id }} --profile $BUILD_PROFILE
         if: ${{ matrix.target.native}}
 
       - name: Build (cross)
-        run: cross build --target ${{ matrix.target.id }} --profile release
+        run: cross build --target ${{ matrix.target.id }} --profile $BUILD_PROFILE
         if: ${{ !matrix.target.native}}
 
       - name: "Prepare dist"
         shell: bash
         run: |
           mkdir -pv dist/helix
-          if [ -f target/${{ matrix.target.id }}/release/hx ]; then
-            mv -v target/${{ matrix.target.id }}/release/hx dist/helix/
+          if [ -f target/${{ matrix.target.id }}/$BUILD_PROFILE/hx ]; then
+            mv -v target/${{ matrix.target.id }}/$BUILD_PROFILE/hx dist/helix/
           else
-            mv -v target/${{ matrix.target.id }}/release/hx.exe dist/helix/
+            mv -v target/${{ matrix.target.id }}/$BUILD_PROFILE/hx.exe dist/helix/
           fi
           rm -rf runtime/grammars/sources
           mv -v runtime dist/helix/
@@ -81,8 +82,6 @@ jobs:
 
           if [[ "$RUNNER_OS" != "Windows" ]]; then
             tar -cvzf "evil-helix-${{ matrix.target.name }}.tar.gz" helix
-          #else
-          #  tar -a -c -f "evil-helix-${{ matrix.target.name }}.zip" helix
           fi
 
       - name: "Upload artifacts (tar)"
@@ -96,4 +95,3 @@ jobs:
         with:
           name: "evil-helix-${{ matrix.target.name }}"
           path: "dist/helix"
-          #path: "dist/evil-helix-${{ matrix.target.name }}.*"
