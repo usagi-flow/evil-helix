@@ -112,14 +112,14 @@ jobs:
         with:
           name: "evil-helix-${{ matrix.target.name }}"
           path: "dist/evil-helix-${{ matrix.target.name }}.tar.gz"
-        if: ${{ matrix.target.id != 'x86_64-pc-windows-gnu' }}
+        if: ${{ matrix.target.id != 'x86_64-pc-windows-msvc' }}
 
       - name: "Upload artifacts (zip)"
         uses: actions/upload-artifact@v4
         with:
           name: "evil-helix-${{ matrix.target.name }}"
           path: "dist/helix"
-        if: ${{ matrix.target.id == 'x86_64-pc-windows-gnu' }}
+        if: ${{ matrix.target.id == 'x86_64-pc-windows-msvc' }}
 
       - name: Release suffix
         id: release-suffix
