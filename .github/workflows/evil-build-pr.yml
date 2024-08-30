@@ -80,11 +80,24 @@ jobs:
           fi
           rm -rf runtime/grammars/sources
           mv -v runtime dist/helix/
-          cd dist
+          #cd dist
 
-          if [[ "$RUNNER_OS" != "Windows" ]]; then
-            tar -cvzf "evil-helix-${{ matrix.target.name }}.tar.gz" helix
-          fi
+          #if [[ "$RUNNER_OS" != "Windows" ]]; then
+          #  tar -cvzf "evil-helix-${{ matrix.target.name }}.tar.gz" helix
+          #fi
+
+      - name: "Compress dist (tar)"
+        shell: bash
+        run: |
+          cd dist
+          tar -cvzf "evil-helix-${{ matrix.target.name }}.tar.gz" helix
+        if: ${{ matrix.target.id != 'x86_64-pc-windows-msvc' }}
+
+      - name: "Compress dist (zip)"
+        run: |
+          cd dist
+          Compress-Archive -Path helix -Destination "evil-helix-${{ matrix.target.name }}.zip"
+        if: ${{ matrix.target.id == 'x86_64-pc-windows-msvc' }}
 
       - name: "Upload artifacts (tar)"
         uses: actions/upload-artifact@v4
@@ -97,5 +110,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: "evil-helix-${{ matrix.target.name }}"
-          path: "dist/helix"
+          path: "dist/evil-helix-${{ matrix.target.name }}.zip"
         if: ${{ matrix.target.id == 'x86_64-pc-windows-msvc' }}
