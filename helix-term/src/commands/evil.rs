@@ -3,9 +3,9 @@ use std::{
     sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use helix_core::movement::move_next_word_end;
 use helix_core::movement::move_prev_word_start;
 use helix_core::movement::{is_word_boundary, Direction};
+use helix_core::{movement::move_next_word_end, Rope};
 use helix_core::{Range, Selection, Transaction};
 use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
@@ -19,6 +19,7 @@ use super::select_mode;
 enum Command {
     Yank,
     Delete,
+    Change,
 }
 
 impl TryFrom<char> for Command {
@@ -26,6 +27,7 @@ impl TryFrom<char> for Command {
 
     fn try_from(value: char) -> Result<Self, Self::Error> {
         match value {
+            'c' => Ok(Command::Change),
             'd' => Ok(Command::Delete),
             'y' => Ok(Command::Yank),
             _ => Err(()),
@@ -50,7 +52,7 @@ impl TryFrom<char> for Modifier {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 enum Motion {
     PrevWordStart,
     NextWordEnd,
@@ -226,7 +228,16 @@ impl EvilCommands {
                     // The inner word modifier isn't valid for a line-based selection
                     if !has_inner_word_modifier {
                         // No motion was specified: Perform a line-based selection
-                        selection = Some(Self::get_full_line_based_selection(cx));
+                        log::trace!("No motion was specified: Perform a line-based selection");
+
+                        // If the command is a change command, do not include the final line break,
+                        // to ensure an empty line is left in place.
+                        selection = Some(Self::get_full_line_based_selection(
+                            cx,
+                            !Self::context()
+                                .command
+                                .is_some_and(|command| command == Command::Change),
+                        ));
                     }
                 }
             }
@@ -386,13 +397,21 @@ impl EvilCommands {
         return Ok(selection);
     }
 
-    fn get_full_line_based_selection(cx: &mut Context) -> Selection {
+    fn get_full_line_based_selection(
+        cx: &mut Context,
+        include_final_line_break: bool,
+    ) -> Selection {
         let (view, doc) = current!(cx.editor);
 
         let lines_to_select = Self::context().count.unwrap_or(1);
 
         let text = doc.text();
         let extend = Extend::Below;
+
+        log::trace!("Calculating full line-based selection (lines to select: {}, extend below: {}, include final line break: {})", lines_to_select, match extend {
+            Extend::Above => false,
+            Extend::Below => true,
+        }, include_final_line_break);
 
         // Process a number of lines: first create a temporary selection of the text to be processed
         return doc.selection(view.id).clone().transform(|range| {
@@ -402,7 +421,7 @@ impl EvilCommands {
             let end: usize = text.line_to_char((end_line + lines_to_select).min(text.len_lines()));
 
             // Extend to previous/next line if current line is selected
-            let (anchor, head) = if range.from() == start && range.to() == end {
+            let (mut anchor, mut head) = if range.from() == start && range.to() == end {
                 match extend {
                     Extend::Above => (end, text.line_to_char(start_line.saturating_sub(1))),
                     Extend::Below => (
@@ -414,8 +433,35 @@ impl EvilCommands {
                 (start, end)
             };
 
+            // Strip the final line break if requested
+            if !include_final_line_break {
+                (anchor, head) = Self::strip_trailing_line_break(text, (anchor, head));
+            }
+
             Range::new(anchor, head)
         });
+    }
+
+    fn strip_trailing_line_break(text: &Rope, range: (usize, usize)) -> (usize, usize) {
+        let start = range.0.min(range.1);
+        let mut end = range.0.max(range.1);
+        let inversed = range.0 > range.1;
+
+        // The end points to the next char, not to the last char which would be selected
+        if end.saturating_sub(start) >= 2 && text.char(end - 1) == '\n' {
+            end -= 1;
+
+            // The line might end with CR & LF; in that case, strip CR as well
+            if end.saturating_sub(start) >= 2 && text.char(end - 1) == '\r' {
+                end -= 1;
+            }
+        }
+
+        return if !inversed {
+            (start, end)
+        } else {
+            (end, start)
+        };
     }
 
     fn yank_selection(cx: &mut Context, selection: &Selection, _set_status_message: bool) {
@@ -482,7 +528,7 @@ impl EvilCommands {
                         Command::Yank => {
                             Self::yank_selection(cx, &selection, true);
                         }
-                        Command::Delete => {
+                        Command::Change | Command::Delete => {
                             Self::delete_selection(cx, &selection, true);
                         }
                     }
@@ -530,12 +576,16 @@ impl EvilCommands {
             // Assume this callback is called only if a command was initiated
             if command == active_command {
                 Self::evil_command(cx, active_command, set_mode);
+                return;
             } else {
-                // A command was initiated, but another command was initiated.
-                Self::context_mut().reset();
+                log::debug!(
+                    "A command ({:?}) was active, but another command ({:?}) has been initiated",
+                    active_command,
+                    command
+                );
+                //Self::context_mut().reset();
                 // TODO: proceed with initiating the other command?
             }
-            return;
         }
 
         // Is the command receiving a new/increased count?
@@ -607,7 +657,10 @@ impl EvilCommands {
     pub fn delete(cx: &mut Context, op: Operation) {
         Self::evil_command(
             cx,
-            Command::Delete,
+            match op {
+                Operation::Delete => Command::Delete,
+                Operation::Change => Command::Change,
+            },
             Some(match op {
                 Operation::Delete => Mode::Normal,
                 Operation::Change => Mode::Insert,
