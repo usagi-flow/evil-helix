@@ -201,6 +201,7 @@ impl EvilCommands {
                     Self::context().modifiers.contains(&Modifier::InnerWord);
 
                 if let Some(motion) = Self::context().motion.as_ref() {
+                    log::trace!("Calculating selection using motion: {:?}", motion);
                     // A motion was specified: Select accordingly
                     // TODO: handle other motion keys as well
                     selection = match motion {
@@ -571,10 +572,13 @@ impl EvilCommands {
             set_mode = context.set_mode;
         }
 
+        log::trace!("Key callback invoked, active command: {:?}", active_command);
+
         // Is the command being executed?
         if let Some(command) = e.char().and_then(|c| Command::try_from(c).ok()) {
             // Assume this callback is called only if a command was initiated
             if command == active_command {
+                log::trace!("The active command is being executed: {:?}", active_command);
                 Self::evil_command(cx, active_command, set_mode);
                 return;
             } else {
@@ -600,7 +604,7 @@ impl EvilCommands {
             if value != 0 || evil_context.count.is_some() {
                 evil_context.count = Some(evil_context.count.map(|c| c * 10).unwrap_or(0) + value);
 
-                log::info!(
+                log::trace!(
                     "Key callback: Increasing count to {}",
                     evil_context.count.unwrap()
                 );
@@ -617,7 +621,7 @@ impl EvilCommands {
         if let Some(c) = e.char() {
             // Is the command receiving a modifier?
             if let Some(modifier) = Modifier::try_from(c).ok() {
-                log::info!("Key callback: Detected modifier key '{}'", c);
+                log::trace!("Key callback: Detected modifier key '{}'", c);
 
                 Self::context_mut().modifiers.push(modifier);
 
@@ -633,7 +637,7 @@ impl EvilCommands {
             // Check this after the count check, because "0" could imply increasing the count,
             // and if it doesn't, it's probably a motion key.
             if let Some(motion) = e.char().and_then(|c| Motion::try_from(c).ok()) {
-                log::info!("Key callback: Detected motion key '{}'", c);
+                log::trace!("Key callback: Detected motion key '{}'", c);
 
                 Self::context_mut().motion = Some(motion);
                 // TODO; a motion key should immediately execute the command
