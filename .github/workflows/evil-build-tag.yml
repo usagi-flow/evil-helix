@@ -9,8 +9,10 @@ permissions: write-all
 
 env:
   RUST_BACKTRACE: 1
+  RUST_BUILD_PROFILE: opt
   HELIX_LOG_LEVEL: info
   HELIX_DEFAULT_RUNTIME: /opt/helix/runtime
+  BINSTALL_DISABLE_TELEMETRY: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -48,6 +50,10 @@ jobs:
             name: aarch64-macos
             native: true
             os: macos-latest
+          - id: x86_64-pc-windows-gnu
+            name: amd64-windows
+            native: false
+            os: ubuntu-latest
 
     runs-on: ${{ matrix.target.os }}
 
@@ -62,39 +68,63 @@ jobs:
 
       - name: Install binstall
         uses: "cargo-bins/cargo-binstall@v1.6.5"
-        if: ${{ !matrix.target.native}}
+        if: ${{ !matrix.target.native }}
 
       - name: "Install cross"
         run: "cargo binstall -y cross"
-        if: ${{ !matrix.target.native}}
+        if: ${{ !matrix.target.native }}
 
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "build"
 
       - name: Build
+        shell: bash
         run: |
           rustup target add ${{ matrix.target.id }}
-          cargo build --target ${{ matrix.target.id }} --profile opt
-        if: ${{ matrix.target.native}}
+          cargo build --target ${{ matrix.target.id }} --profile $RUST_BUILD_PROFILE
+        if: ${{ matrix.target.native }}
 
       - name: Build (cross)
-        run: cross build --target ${{ matrix.target.id }} --profile opt
-        if: ${{ !matrix.target.native}}
+        shell: bash
+        run: cross build --target ${{ matrix.target.id }} --profile $RUST_BUILD_PROFILE
+        if: ${{ !matrix.target.native }}
 
       - name: "Prepare dist"
+        shell: bash
         run: |
           mkdir -pv dist/helix
-          mv -v target/${{ matrix.target.id }}/opt/hx dist/helix/
+          if [ -f target/${{ matrix.target.id }}/$RUST_BUILD_PROFILE/hx ]; then
+            mv -v target/${{ matrix.target.id }}/$RUST_BUILD_PROFILE/hx dist/helix/
+          else
+            mv -v target/${{ matrix.target.id }}/$RUST_BUILD_PROFILE/hx.exe dist/helix/
+          fi
           rm -rf runtime/grammars/sources
           mv -v runtime dist/helix/
-          cd dist && tar -cvzf helix-${{ matrix.target.name }}.tar.gz helix
+          #cd dist
+
+          #if [[ "$RUNNER_OS" != "Windows" ]]; then
+          #  tar -cvzf "evil-helix-${{ matrix.target.name }}.tar.gz" helix
+          #fi
+
+      - name: "Compress dist (tar)"
+        shell: bash
+        run: |
+          cd dist
+          tar -cvzf "evil-helix-${{ matrix.target.name }}.tar.gz" helix
+        if: ${{ matrix.target.id != 'x86_64-pc-windows-msvc' }}
+
+      - name: "Compress dist (zip)"
+        run: |
+          cd dist
+          Compress-Archive -Path helix -Destination "evil-helix-${{ matrix.target.name }}.zip"
+        if: ${{ matrix.target.id == 'x86_64-pc-windows-msvc' }}
 
       - name: "Upload artifacts"
         uses: actions/upload-artifact@v4
         with:
-          name: helix-${{ matrix.target.name }}
-          path: dist/helix-${{ matrix.target.name }}.tar.gz
+          name: "evil-helix-${{ matrix.target.name }}"
+          path: "dist/evil-helix-${{ matrix.target.name }}.*"
 
       - name: Release suffix
         id: release-suffix
@@ -104,8 +134,9 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/*
+          file: dist/evil-helix-*.*
           file_glob: true
           tag: ${{ github.ref }}
           release_name: evil-helix-${{steps.release-suffix.outputs.suffix}}
           overwrite: true
+          draft: true
