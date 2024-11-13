@@ -3,7 +3,7 @@ use std::{
     sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use helix_core::movement::move_prev_word_start;
+use helix_core::movement::{move_prev_word_start, move_prev_long_word_start, move_next_long_word_end};
 use helix_core::movement::{is_word_boundary, Direction};
 use helix_core::{movement::move_next_word_end, Rope};
 use helix_core::{Range, Selection, Transaction};
@@ -215,7 +215,7 @@ impl EvilCommands {
                             if has_inner_word_modifier =>
                         {
                             // TODO: this doesn't support long words yet
-                            Self::get_bidirectional_word_based_selection(cx).ok()
+                            Self::get_bidirectional_long_word_based_selection(cx).ok()
                         }
                         Motion::PrevLongWordStart | Motion::NextLongWordEnd => {
                             // TODO: this doesn't support long words yet
@@ -289,6 +289,29 @@ impl EvilCommands {
             let range = move_prev_word_start(text, range, 1);
             let range = move_next_word_end(text, range, 1);
             return range;
+        }))
+    }
+
+    fn get_bidirectional_long_word_based_selection(cx: &mut Context) -> Result<Selection, String> {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+
+        Ok(doc.selection(view.id).clone().transform(|range| {
+            if range.anchor != 0 {
+                let c = text.char(range.anchor - 1);
+
+                if !c.is_whitespace() {
+                    let range = move_prev_long_word_start(text, range, 1);
+                    let range = move_next_long_word_end(text, range, 1);
+                    return range;
+                } else {
+                let range = move_next_long_word_end(text, range, 1);
+                return range;
+                }
+            } else {
+                let range = move_next_long_word_end(text, range, 1);
+                return range;
+            }
         }))
     }
 
