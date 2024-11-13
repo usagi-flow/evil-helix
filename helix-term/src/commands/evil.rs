@@ -6,12 +6,13 @@ use std::{
 use helix_core::movement::{move_prev_word_start, move_prev_long_word_start, move_next_long_word_end};
 use helix_core::movement::{is_word_boundary, Direction};
 use helix_core::{movement::move_next_word_end, Rope};
-use helix_core::{Range, Selection, Transaction};
+use helix_core::match_brackets::{PAIRS, BRACKETS, is_valid_pair};
+use helix_core::{Range, Selection, Transaction, textobject::textobject_word, textobject::TextObject, textobject::textobject_pair_surround, textobject::textobject_pair_surround_impl};
 use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
 use once_cell::sync::Lazy;
 
-use crate::commands::{enter_insert_mode, exit_select_mode, Context, Extend, Operation};
+use crate::commands::{enter_insert_mode, exit_select_mode, Context, Extend, Operation, find_char_impl, find_next_char_impl, find_prev_char_impl};
 
 use super::select_mode;
 
@@ -37,7 +38,12 @@ impl TryFrom<char> for Command {
 
 #[derive(Eq, PartialEq)]
 enum Modifier {
-    InnerWord,
+    Inner,
+    Outer,
+    To,
+    Find,
+    PrevTo,
+    PrevFind,
 }
 
 impl TryFrom<char> for Modifier {
@@ -46,7 +52,12 @@ impl TryFrom<char> for Modifier {
     fn try_from(value: char) -> Result<Self, Self::Error> {
         match value {
             // :h object-select
-            'i' => Ok(Self::InnerWord),
+            'i' => Ok(Self::Inner),
+            'a' => Ok(Self::Outer),
+            't' => Ok(Self::To),
+            'f' => Ok(Self::Find),
+            'T' => Ok(Self::PrevTo),
+            'F' => Ok(Self::PrevFind),
             _ => Err(()),
         }
     }
@@ -60,6 +71,7 @@ enum Motion {
     NextLongWordEnd,
     LineStart,
     LineEnd,
+    Pair(char),
 }
 
 impl TryFrom<char> for Motion {
@@ -73,7 +85,13 @@ impl TryFrom<char> for Motion {
             'B' => Ok(Self::PrevLongWordStart),
             '$' => Ok(Self::LineEnd),
             '0' => Ok(Self::LineStart),
-            _ => Err(()),
+            _ => {
+                if is_valid_pair(value) {
+                    Ok(Self::Pair(value))
+                } else {
+                    Err(())
+                }
+            },
         }
     }
 }
@@ -198,15 +216,26 @@ impl EvilCommands {
                 // TODO: see https://github.com/helix-editor/helix/blob/823eaad1a118e8865a6400afc22d37e060783d45/helix-term/src/ui/editor.rs#L1331-L1372
 
                 let has_inner_word_modifier =
-                    Self::context().modifiers.contains(&Modifier::InnerWord);
+                    Self::context().modifiers.contains(&Modifier::Inner);
+                let has_outer_word_modifier =
+                    Self::context().modifiers.contains(&Modifier::Outer);
 
+                    let (view, doc) = current!(cx.editor);
+                    let text = doc.text().slice(..);
                 if let Some(motion) = Self::context().motion.as_ref() {
                     log::trace!("Calculating selection using motion: {:?}", motion);
                     // A motion was specified: Select accordingly
                     // TODO: handle other motion keys as well
                     selection = match motion {
                         Motion::PrevWordStart | Motion::NextWordEnd if has_inner_word_modifier => {
-                            Self::get_bidirectional_word_based_selection(cx).ok()
+                            Some(doc.selection(view.id).clone().transform(|range| {
+                                textobject_word(text, range, TextObject::Inside, 1, false)
+                            }))
+                        }
+                        Motion::PrevWordStart | Motion::NextWordEnd if has_outer_word_modifier => {
+                            Some(doc.selection(view.id).clone().transform(|range| {
+                                textobject_word(text, range, TextObject::Around, 1, false)
+                            }))
                         }
                         Motion::PrevWordStart | Motion::NextWordEnd => {
                             Self::get_word_based_selection(cx, motion).ok()
@@ -214,15 +243,49 @@ impl EvilCommands {
                         Motion::PrevLongWordStart | Motion::NextLongWordEnd
                             if has_inner_word_modifier =>
                         {
-                            // TODO: this doesn't support long words yet
-                            Self::get_bidirectional_long_word_based_selection(cx).ok()
+                            Some(doc.selection(view.id).clone().transform(|range| {
+                                textobject_word(text, range, TextObject::Inside, 1, true)
+                            }))
+                        }
+                        Motion::PrevLongWordStart | Motion::NextLongWordEnd
+                            if has_outer_word_modifier =>
+                        {
+                            Some(doc.selection(view.id).clone().transform(|range| {
+                                textobject_word(text, range, TextObject::Around, 1, true)
+                            }))
                         }
                         Motion::PrevLongWordStart | Motion::NextLongWordEnd => {
-                            // TODO: this doesn't support long words yet
                             Self::get_word_based_selection(cx, motion).ok()
                         }
                         Motion::LineStart | Motion::LineEnd => {
                             Self::get_partial_line_based_selection(cx, motion).ok()
+                        }
+                        Motion::Pair(c) => {
+                            // TODO: Implement pairs
+                            {
+                                let sel = doc.selection(view.id).clone().transform(|range| {
+                                    let search_start_pos = if range.anchor < range.head {
+                                        range.head - 1
+                                    } else {
+                                        range.head
+                                    };
+                                    let prev = find_prev_char_impl(text, c.to_owned(), search_start_pos, 1, true);
+                                    if prev.is_some() {
+                                        return textobject_pair_surround_impl(None, text, range, TextObject::Inside, Some(c.to_owned()), 1);
+                                    } else {
+                                        find_next_char_impl(text, c.to_owned(), search_start_pos, 1, true).map_or(range, |pos| {
+                                            range.put_cursor(text, pos, true)
+                                        })
+                                    }
+                                });
+                                doc.set_selection(view.id, sel.clone());
+                                {
+                                let sel = doc.selection(view.id).clone().transform(|range| {
+                                    textobject_pair_surround_impl(None, text, range, TextObject::Inside, Some(c.to_owned()), 1)
+                                });
+                                }
+                                Some(sel)
+                            }
                         }
                     };
                 } else {
@@ -286,33 +349,92 @@ impl EvilCommands {
         let text = doc.text().slice(..);
 
         Ok(doc.selection(view.id).clone().transform(|range| {
-            let range = move_prev_word_start(text, range, 1);
-            let range = move_next_word_end(text, range, 1);
-            return range;
-        }))
-    }
-
-    fn get_bidirectional_long_word_based_selection(cx: &mut Context) -> Result<Selection, String> {
-        let (view, doc) = current!(cx.editor);
-        let text = doc.text().slice(..);
-
-        Ok(doc.selection(view.id).clone().transform(|range| {
             if range.anchor != 0 {
                 let c = text.char(range.anchor - 1);
 
                 if !c.is_whitespace() {
-                    let range = move_prev_long_word_start(text, range, 1);
-                    let range = move_next_long_word_end(text, range, 1);
+                    let range = move_prev_word_start(text, range, 1);
+                    let range = move_next_word_end(text, range, 1);
                     return range;
                 } else {
-                let range = move_next_long_word_end(text, range, 1);
+                let range = move_next_word_end(text, range, 1);
                 return range;
                 }
             } else {
-                let range = move_next_long_word_end(text, range, 1);
+                let range = move_next_word_end(text, range, 1);
                 return range;
             }
         }))
+    }
+
+    fn get_bidirectional_long_word_based_selection(cx: &mut Context, m: Modifier) -> Result<Selection, String> {
+        match m {
+            Modifier::Inner => {
+                let (view, doc) = current!(cx.editor);
+                let text = doc.text().slice(..);
+
+                Ok(doc.selection(view.id).clone().transform(|range| {
+                    if range.anchor != 0 {
+                        let c = text.char(range.anchor - 1);
+
+                        if !c.is_whitespace() {
+                            let range = move_prev_long_word_start(text, range, 1);
+                            let range = move_next_long_word_end(text, range, 1);
+                            return range;
+                        } else {
+                            let range = move_next_long_word_end(text, range, 1);
+                            return range;
+                        }
+                    } else {
+                        let range = move_next_long_word_end(text, range, 1);
+                        return range;
+                    }
+                }))
+            },
+            Modifier::Outer => {
+                let (view, doc) = current!(cx.editor);
+                let text = doc.text().slice(..);
+
+                Ok(doc.selection(view.id).clone().transform(|range| {
+                    if range.anchor != 0 {
+                        let c = text.char(range.anchor - 1);
+
+                        if !c.is_whitespace() {
+                            let range = move_prev_long_word_start(text, range, 1);
+                            let mut range = move_next_long_word_end(text, range, 1);
+                            let c = text.char(range.head + 1);
+                            if c.is_whitespace() {
+                                range.head += 1;
+                                return range;
+                            } else {
+                                return range;
+                            }
+                        } else {
+                            let mut range = move_next_long_word_end(text, range, 1);
+                            range.anchor -= 1;
+                            let c = text.char(range.head + 1);
+                            if c.is_whitespace() {
+                                range.head += 1;
+                                range.anchor -= 1;
+                                return range;
+                            } else {
+                                return range;
+                            }
+                        }
+                    } else {
+                        let mut range = move_next_long_word_end(text, range, 1);
+                        let c = text.char(range.head + 1);
+                        if c.is_whitespace() {
+                            range.head += 1;
+                            return range;
+                        } else {
+                            return range;
+                        }
+                    }
+                }))
+            },
+            _ => return Err(String::from("Should never reach this")),
+        }
     }
 
     fn get_word_based_selection(cx: &mut Context, motion: &Motion) -> Result<Selection, String> {

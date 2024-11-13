@@ -219,7 +219,7 @@ pub fn textobject_pair_surround_closest(
     textobject_pair_surround_impl(syntax, slice, range, textobject, None, count)
 }
 
-fn textobject_pair_surround_impl(
+pub fn textobject_pair_surround_impl(
     syntax: Option<&Syntax>,
     slice: RopeSlice,
     range: Range,
