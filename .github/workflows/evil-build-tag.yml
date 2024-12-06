@@ -53,7 +53,7 @@ jobs:
           - id: x86_64-pc-windows-msvc
             name: amd64-windows
             native: true
-            os: ubuntu-latest
+            os: windows-latest
 
     runs-on: ${{ matrix.target.os }}
 
