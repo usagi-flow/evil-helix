@@ -126,6 +126,13 @@ jobs:
           name: "evil-helix-${{ matrix.target.name }}"
           path: "dist/evil-helix-${{ matrix.target.name }}.*"
 
+  release:
+
+    needs: [build]
+
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Release suffix
         id: release-suffix
         run: echo "::set-output name=suffix::$(date +'%Y%m%d')"
