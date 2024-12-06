@@ -133,11 +133,43 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Release suffix
+      - name: "Prepare"
+        run: mkdir -p dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: "evil-helix-amd64-linux"
+          path: "dist/evil-helix-amd64-linux.zip"
+      - uses: actions/download-artifact@v4
+        with:
+          name: "evil-helix-aarch64-linux"
+          path: "dist/evil-helix-aarch64-linux.zip"
+      - uses: actions/download-artifact@v4
+        with:
+          name: "evil-helix-aarch64-linux-musl"
+          path: "dist/evil-helix-aarch64-linux-musl.zip"
+      - uses: actions/download-artifact@v4
+        with:
+          name: "evil-helix-armv6-linux-musl"
+          path: "dist/evil-helix-armv6-linux-musl.zip"
+      - uses: actions/download-artifact@v4
+        with:
+          name: "evil-helix-amd64-macos"
+          path: "dist/evil-helix-amd64-macos.zip"
+      - uses: actions/download-artifact@v4
+        with:
+          name: "evil-helix-aarch64-macos"
+          path: "dist/evil-helix-aarch64-macos.zip"
+      - uses: actions/download-artifact@v4
+        with:
+          name: "evil-helix-amd64-windows"
+          path: "dist/evil-helix-amd64-windows.zip"
+
+      - name: "Release suffix"
         id: release-suffix
         run: echo "::set-output name=suffix::$(date +'%Y%m%d')"
 
-      - name: Create release
+      - name: "Create release"
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
