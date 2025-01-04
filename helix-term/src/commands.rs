@@ -1560,7 +1560,7 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
 //
 
 #[inline]
-fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
+pub fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
     editor: &mut Editor,
     search_fn: &F,
     inclusive: bool,
@@ -1594,7 +1594,7 @@ fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
     doc.set_selection(view.id, selection);
 }
 
-fn find_next_char_impl(
+pub fn find_next_char_impl(
     text: RopeSlice,
     ch: char,
     pos: usize,
@@ -1613,7 +1613,7 @@ fn find_next_char_impl(
     }
 }
 
-fn find_prev_char_impl(
+pub fn find_prev_char_impl(
     text: RopeSlice,
     ch: char,
     pos: usize,
