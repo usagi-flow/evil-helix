@@ -15,7 +15,7 @@ use crate::commands::{
     enter_insert_mode, exit_select_mode, Context, Extend, OnKeyCallbackKind, Operation,
 };
 
-use super::select_mode;
+use super::{select_mode, OnKeyCallbackKind};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Command {
