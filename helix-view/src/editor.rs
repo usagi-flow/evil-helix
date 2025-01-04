@@ -1,9 +1,10 @@
 use crate::{
-    align_view,
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
+    clipboard::ClipboardProvider,
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
+    events::DocumentFocusLost,
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -11,10 +12,10 @@ use crate::{
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
-    view::ViewPosition,
-    Align, Document, DocumentId, View, ViewId,
+    Document, DocumentId, View, ViewId,
 };
 use dap::StackFrame;
+use helix_event::dispatch;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -271,8 +272,15 @@ pub struct Config {
     pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
+    /// Enable filepath completion.
+    /// Show files and directories if an existing path at the cursor was recognized,
+    /// either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved).
+    /// Defaults to true.
+    pub path_completion: bool,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
+    /// Default register used for yank/paste. Defaults to '"'
+    pub default_yank_register: char,
     /// Automatic save on focus lost and/or after delay.
     /// Time delay in milliseconds since last edit after which auto save timer triggers.
     /// Time delay defaults to false with 3000ms delay. Focus lost defaults to false.
@@ -300,6 +308,9 @@ pub struct Config {
     /// Whether to instruct the LSP to replace the entire word when applying a completion
     /// or to only insert new text
     pub completion_replace: bool,
+    /// `true` if helix should automatically add a line comment token if you're currently in a comment
+    /// and press `enter`.
+    pub continue_comments: bool,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
@@ -349,6 +360,8 @@ pub struct Config {
     /// Display diagnostic below the line they occur.
     pub inline_diagnostics: InlineDiagnosticsConfig,
     pub end_of_line_diagnostics: DiagnosticFilter,
+    // Set to override the default clipboard provider
+    pub clipboard_provider: ClipboardProvider,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -434,7 +447,9 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
 pub struct LspConfig {
     /// Enables LSP
     pub enable: bool,
-    /// Display LSP progress messages below statusline
+    /// Display LSP messagess from $/progress below statusline
+    pub display_progress_messages: bool,
+    /// Display LSP messages from window/showMessage below statusline
     pub display_messages: bool,
     /// Enable automatic pop up of signature help (parameter hints)
     pub auto_signature_help: bool,
@@ -452,7 +467,8 @@ impl Default for LspConfig {
     fn default() -> Self {
         Self {
             enable: true,
-            display_messages: false,
+            display_progress_messages: false,
+            display_messages: true,
             auto_signature_help: true,
             display_signature_help_docs: true,
             display_inlay_hints: false,
@@ -993,7 +1009,9 @@ impl Default for Config {
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
+            path_completion: true,
             auto_format: true,
+            default_yank_register: '"',
             auto_save: AutoSave::default(),
             idle_timeout: Duration::from_millis(250),
             completion_timeout: Duration::from_millis(250),
@@ -1019,6 +1037,7 @@ impl Default for Config {
             },
             text_width: 80,
             completion_replace: false,
+            continue_comments: true,
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
@@ -1028,6 +1047,7 @@ impl Default for Config {
             jump_label_alphabet: ('a'..='z').collect(),
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
+            clipboard_provider: ClipboardProvider::default(),
         }
     }
 }
@@ -1120,6 +1140,7 @@ pub struct Editor {
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
+    pub last_cwd: Option<PathBuf>,
 
     pub exit_code: i32,
 
@@ -1177,6 +1198,7 @@ pub enum CompleteAction {
     Applied {
         trigger_offset: usize,
         changes: Vec<Change>,
+        placeholder: bool,
     },
 }
 
@@ -1244,13 +1266,17 @@ impl Editor {
             theme_loader,
             last_theme: None,
             last_selection: None,
-            registers: Registers::default(),
+            registers: Registers::new(Box::new(arc_swap::access::Map::new(
+                Arc::clone(&config),
+                |config: &Config| &config.clipboard_provider,
+            ))),
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
             last_completion: None,
+            last_cwd: None,
             config,
             auto_pairs,
             exit_code: 0,
@@ -1333,6 +1359,13 @@ impl Editor {
         let error = error.into();
         log::debug!("editor error: {}", error);
         self.status_msg = Some((error, Severity::Error));
+    }
+
+    #[inline]
+    pub fn set_warning<T: Into<Cow<'static, str>>>(&mut self, warning: T) {
+        let warning = warning.into();
+        log::warn!("editor warning: {}", warning);
+        self.status_msg = Some((warning, Severity::Warning));
     }
 
     #[inline]
@@ -1440,6 +1473,11 @@ impl Editor {
         }
         let is_dir = new_path.is_dir();
         for ls in self.language_servers.iter_clients() {
+            // A new language server might have been started in `set_doc_path` and won't
+            // be initialized yet. Skip the `did_rename` notification for this server.
+            if !ls.is_initialized() {
+                continue;
+            }
             if let Some(notification) = ls.did_rename(old_path, &new_path, is_dir) {
                 tokio::spawn(notification);
             };
@@ -1592,16 +1630,17 @@ impl Editor {
     }
 
     fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
+        let scrolloff = self.config().scrolloff;
         let view = self.tree.get_mut(current_view);
-        view.doc = doc_id;
-        view.offset = ViewPosition::default();
 
+        view.doc = doc_id;
         let doc = doc_mut!(self, &doc_id);
+
         doc.ensure_view_init(view.id);
         view.sync_changes(doc);
         doc.mark_as_focused();
 
-        align_view(doc, view, Align::Center);
+        view.ensure_cursor_in_view(doc, scrolloff)
     }
 
     pub fn switch(&mut self, id: DocumentId, action: Action) {
@@ -1616,7 +1655,7 @@ impl Editor {
             self.enter_normal_mode();
         }
 
-        match action {
+        let focust_lost = match action {
             Action::Replace => {
                 let (view, doc) = current_ref!(self);
                 // If the current view is an empty scratch buffer and is not displayed in any other views, delete it.
@@ -1666,6 +1705,10 @@ impl Editor {
 
                 self.replace_document_in_view(view_id, id);
 
+                dispatch(DocumentFocusLost {
+                    editor: self,
+                    doc: id,
+                });
                 return;
             }
             Action::Load => {
@@ -1676,6 +1719,7 @@ impl Editor {
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
+                let focus_lost = self.tree.try_get(self.tree.focus).map(|view| view.doc);
                 // copy the current view, unless there is no view yet
                 let view = self
                     .tree
@@ -1695,10 +1739,17 @@ impl Editor {
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
                 doc.mark_as_focused();
+                focus_lost
             }
-        }
+        };
 
         self._refresh();
+        if let Some(focus_lost) = focust_lost {
+            dispatch(DocumentFocusLost {
+                editor: self,
+                doc: focus_lost,
+            });
+        }
     }
 
     /// Generate an id for a new document and register it.
@@ -1748,10 +1799,14 @@ impl Editor {
         Ok(doc_id)
     }
 
+    pub fn document_id_by_path(&self, path: &Path) -> Option<DocumentId> {
+        self.document_by_path(path).map(|doc| doc.id)
+    }
+
     // ??? possible use for integration tests
     pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, DocumentOpenError> {
         let path = helix_stdx::path::canonicalize(path);
-        let id = self.document_by_path(&path).map(|doc| doc.id);
+        let id = self.document_id_by_path(&path);
 
         let id = if let Some(id) = id {
             id
@@ -1925,11 +1980,15 @@ impl Editor {
                 let doc = doc_mut!(self, &view.doc);
                 view.sync_changes(doc);
             }
+            let view = view!(self, view_id);
+            let doc = doc_mut!(self, &view.doc);
+            doc.mark_as_focused();
+            let focus_lost = self.tree.get(prev_id).doc;
+            dispatch(DocumentFocusLost {
+                editor: self,
+                doc: focus_lost,
+            });
         }
-
-        let view = view!(self, view_id);
-        let doc = doc_mut!(self, &view.doc);
-        doc.mark_as_focused();
     }
 
     pub fn focus_next(&mut self) {
@@ -1961,8 +2020,8 @@ impl Editor {
 
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let config = self.config();
-        let view = self.tree.get_mut(id);
-        let doc = &self.documents[&view.doc];
+        let view = self.tree.get(id);
+        let doc = doc_mut!(self, &view.doc);
         view.ensure_cursor_in_view(doc, config.scrolloff)
     }
 
@@ -2146,7 +2205,7 @@ impl Editor {
                 };
 
                 let doc = doc_mut!(self, &save_event.doc_id);
-                doc.set_last_saved_revision(save_event.revision);
+                doc.set_last_saved_revision(save_event.revision, save_event.save_time);
             }
         }
 

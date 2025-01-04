@@ -11,6 +11,7 @@ use crate::{
     movement::Direction,
     Assoc, ChangeSet, RopeGraphemes, RopeSlice,
 };
+use helix_stdx::range::is_subset;
 use helix_stdx::rope::{self, RopeSliceExt};
 use smallvec::{smallvec, SmallVec};
 use std::{borrow::Cow, iter, slice};
@@ -184,16 +185,16 @@ impl Range {
 
         let positions_to_map = match self.anchor.cmp(&self.head) {
             Ordering::Equal => [
-                (&mut self.anchor, Assoc::After),
-                (&mut self.head, Assoc::After),
+                (&mut self.anchor, Assoc::AfterSticky),
+                (&mut self.head, Assoc::AfterSticky),
             ],
             Ordering::Less => [
-                (&mut self.anchor, Assoc::After),
-                (&mut self.head, Assoc::Before),
+                (&mut self.anchor, Assoc::AfterSticky),
+                (&mut self.head, Assoc::BeforeSticky),
             ],
             Ordering::Greater => [
-                (&mut self.head, Assoc::After),
-                (&mut self.anchor, Assoc::Before),
+                (&mut self.head, Assoc::AfterSticky),
+                (&mut self.anchor, Assoc::BeforeSticky),
             ],
         };
         changes.update_positions(positions_to_map.into_iter());
@@ -401,6 +402,15 @@ impl From<(usize, usize)> for Range {
     }
 }
 
+impl From<Range> for helix_stdx::Range {
+    fn from(range: Range) -> Self {
+        Self {
+            start: range.from(),
+            end: range.to(),
+        }
+    }
+}
+
 /// A selection consists of one or more selection ranges.
 /// invariant: A selection can never be empty (always contains at least primary range).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -482,16 +492,16 @@ impl Selection {
             range.old_visual_position = None;
             match range.anchor.cmp(&range.head) {
                 Ordering::Equal => [
-                    (&mut range.anchor, Assoc::After),
-                    (&mut range.head, Assoc::After),
+                    (&mut range.anchor, Assoc::AfterSticky),
+                    (&mut range.head, Assoc::AfterSticky),
                 ],
                 Ordering::Less => [
-                    (&mut range.anchor, Assoc::After),
-                    (&mut range.head, Assoc::Before),
+                    (&mut range.anchor, Assoc::AfterSticky),
+                    (&mut range.head, Assoc::BeforeSticky),
                 ],
                 Ordering::Greater => [
-                    (&mut range.head, Assoc::After),
-                    (&mut range.anchor, Assoc::Before),
+                    (&mut range.head, Assoc::AfterSticky),
+                    (&mut range.anchor, Assoc::BeforeSticky),
                 ],
             }
         });
@@ -511,6 +521,10 @@ impl Selection {
             ranges: self.ranges.iter().peekable(),
             text,
         }
+    }
+
+    pub fn range_bounds(&self) -> impl Iterator<Item = helix_stdx::Range> + '_ {
+        self.ranges.iter().map(|&range| range.into())
     }
 
     pub fn primary_index(&self) -> usize {
@@ -660,7 +674,7 @@ impl Selection {
     pub fn fragments<'a>(
         &'a self,
         text: RopeSlice<'a>,
-    ) -> impl DoubleEndedIterator<Item = Cow<'a, str>> + ExactSizeIterator<Item = Cow<str>> + 'a
+    ) -> impl DoubleEndedIterator<Item = Cow<'a, str>> + ExactSizeIterator<Item = Cow<'a, str>>
     {
         self.ranges.iter().map(move |range| range.fragment(text))
     }
@@ -683,32 +697,9 @@ impl Selection {
         self.ranges.len()
     }
 
-    // returns true if self ⊇ other
+    /// returns true if self ⊇ other
     pub fn contains(&self, other: &Selection) -> bool {
-        let (mut iter_self, mut iter_other) = (self.iter(), other.iter());
-        let (mut ele_self, mut ele_other) = (iter_self.next(), iter_other.next());
-
-        loop {
-            match (ele_self, ele_other) {
-                (Some(ra), Some(rb)) => {
-                    if !ra.contains_range(rb) {
-                        // `self` doesn't contain next element from `other`, advance `self`, we need to match all from `other`
-                        ele_self = iter_self.next();
-                    } else {
-                        // matched element from `other`, advance `other`
-                        ele_other = iter_other.next();
-                    };
-                }
-                (None, Some(_)) => {
-                    // exhausted `self`, we can't match the reminder of `other`
-                    return false;
-                }
-                (_, None) => {
-                    // no elements from `other` left to match, `self` contains `other`
-                    return true;
-                }
-            }
-        }
+        is_subset::<true>(self.range_bounds(), other.range_bounds())
     }
 }
 
@@ -744,7 +735,7 @@ pub struct LineRangeIter<'a> {
     text: RopeSlice<'a>,
 }
 
-impl<'a> Iterator for LineRangeIter<'a> {
+impl Iterator for LineRangeIter<'_> {
     type Item = (usize, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
