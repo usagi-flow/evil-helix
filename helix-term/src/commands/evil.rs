@@ -286,9 +286,20 @@ impl EvilCommands {
         let text = doc.text().slice(..);
 
         Ok(doc.selection(view.id).clone().transform(|range| {
-            let range = move_prev_word_start(text, range, 1);
-            let range = move_next_word_end(text, range, 1);
-            return range;
+            if range.anchor != 0 {
+                let c = text.char(range.anchor - 1);
+                if !c.is_whitespace() {
+                    let range = move_prev_word_start(text, range, 1);
+                    let range = move_next_word_end(text, range, 1);
+                    return range;
+                } else {
+                    let range = move_next_word_end(text, range, 1);
+                    return range;
+                }
+            } else {
+                let range = move_next_word_end(text, range, 1);
+                return range;
+            }
         }))
     }
 
