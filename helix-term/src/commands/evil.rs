@@ -13,7 +13,7 @@ use once_cell::sync::Lazy;
 
 use crate::commands::{enter_insert_mode, exit_select_mode, Context, Extend, Operation};
 
-use super::select_mode;
+use super::{select_mode, OnKeyCallbackKind};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Command {
@@ -510,10 +510,12 @@ impl EvilCommands {
                 }
 
                 if Self::get_mode(cx) != Mode::Select {
-                    cx.on_next_key_callback =
-                        Some(Box::new(move |cx: &mut Context, e: KeyEvent| {
+                    cx.on_next_key_callback = Some((
+                        Box::new(move |cx: &mut Context, e: KeyEvent| {
                             Self::evil_command_key_callback(cx, e);
-                        }));
+                        }),
+                        OnKeyCallbackKind::PseudoPending,
+                    ));
                 } else {
                     // We're in the select mode, execute the command immediately.
                     Self::evil_command(cx, requested_command, set_mode);
@@ -610,9 +612,12 @@ impl EvilCommands {
                 );
 
                 // TODO: cx.on_next_key()
-                cx.on_next_key_callback = Some(Box::new(move |cx: &mut Context, e: KeyEvent| {
-                    Self::evil_command_key_callback(cx, e);
-                }));
+                cx.on_next_key_callback = Some((
+                    Box::new(move |cx: &mut Context, e: KeyEvent| {
+                        Self::evil_command_key_callback(cx, e);
+                    }),
+                    OnKeyCallbackKind::PseudoPending,
+                ));
 
                 return;
             }
@@ -626,9 +631,12 @@ impl EvilCommands {
                 Self::context_mut().modifiers.push(modifier);
 
                 // TODO: cx.on_next_key()
-                cx.on_next_key_callback = Some(Box::new(move |cx: &mut Context, e: KeyEvent| {
-                    Self::evil_command_key_callback(cx, e);
-                }));
+                cx.on_next_key_callback = Some((
+                    Box::new(move |cx: &mut Context, e: KeyEvent| {
+                        Self::evil_command_key_callback(cx, e);
+                    }),
+                    OnKeyCallbackKind::PseudoPending,
+                ));
 
                 return;
             }
@@ -690,7 +698,7 @@ impl EvilCommands {
 
         if let Some(inner_callback) = inner_callback {
             cx.on_next_key(move |cx, event| {
-                inner_callback(cx, event);
+                inner_callback.0(cx, event);
 
                 match Self::get_mode(cx) {
                     Mode::Normal => Self::collapse_selections(cx, CollapseMode::ToHead),
