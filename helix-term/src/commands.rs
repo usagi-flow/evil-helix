@@ -42,7 +42,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::Action,
+    editor::{Action,ModeConfig},
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -66,6 +66,7 @@ use crate::{
 
 use crate::job::{self, Jobs};
 use std::{
+    borrow::BorrowMut,
     cmp::Ordering,
     collections::{HashMap, HashSet},
     error::Error,
@@ -598,6 +599,7 @@ impl MappableCommand {
         evil_find_next_char, "Move to next occurrence of char (evil)",
         evil_till_prev_char, "Move till previous occurrence of char (evil)",
         evil_find_prev_char, "Move to previous occurrence of char (evil)",
+        evil_enable_vis_line_mode, "Enables visual line mode",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
@@ -768,6 +770,7 @@ fn move_visual_line_down(cx: &mut Context) {
     )
 }
 
+
 fn extend_char_left(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Backward, Movement::Extend)
 }
@@ -790,7 +793,10 @@ fn extend_visual_line_up(cx: &mut Context) {
         move_vertically_visual,
         Direction::Backward,
         Movement::Extend,
-    )
+    );
+    if cx.editor.using_evil_line_selection {
+        extend_to_line_bounds(cx);
+    }
 }
 
 fn extend_visual_line_down(cx: &mut Context) {
@@ -799,7 +805,10 @@ fn extend_visual_line_down(cx: &mut Context) {
         move_vertically_visual,
         Direction::Forward,
         Movement::Extend,
-    )
+    );
+    if cx.editor.using_evil_line_selection {
+        extend_to_line_bounds(cx);
+    }    
 }
 
 fn goto_line_end_impl(view: &mut View, doc: &mut Document, movement: Movement) {
@@ -3614,7 +3623,9 @@ fn open_above(cx: &mut Context) {
 }
 
 fn normal_mode(cx: &mut Context) {
+    cx.editor.using_evil_line_selection = false; 
     cx.editor.enter_normal_mode();
+    cx.editor.enter_normal_mode(); // force rerender
 }
 
 // Store a jump on the jumplist.
@@ -6650,4 +6661,12 @@ fn evil_till_prev_char(cx: &mut Context) {
 
 fn evil_find_prev_char(cx: &mut Context) {
     EvilCommands::find_char(cx, find_char, Direction::Backward, true)
+}
+
+fn evil_enable_vis_line_mode(cx: &mut Context) {
+    if cx.editor.mode != Mode::Select {
+        select_mode(cx);
+    }
+    cx.editor.using_evil_line_selection = true;
+    extend_to_line_bounds(cx);   
 }

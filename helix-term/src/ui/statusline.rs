@@ -176,7 +176,7 @@ where
     write(
         context,
         format!(
-            " {} ",
+            " {} {}",
             if visible {
                 match context.editor.mode() {
                     Mode::Insert => &modenames.insert,
@@ -186,6 +186,11 @@ where
             } else {
                 // If not focused, explicitly leave an empty space instead of returning None.
                 "   "
+            },
+            if context.editor.using_evil_line_selection {
+                "LINE "
+            } else {
+                ""
             }
         ),
         if visible && config.color_modes {

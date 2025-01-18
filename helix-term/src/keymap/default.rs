@@ -434,6 +434,7 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         //"E" => move_next_long_word_end,
 
         "v" => select_mode,
+        "V" => evil_enable_vis_line_mode,
         // TODO (redundant with count + gg anyway?): "G" => goto_line,
         "g" => { "Goto"
             "g" => goto_file_start,
