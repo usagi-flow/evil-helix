@@ -3623,9 +3623,12 @@ fn open_above(cx: &mut Context) {
 }
 
 fn normal_mode(cx: &mut Context) {
-    cx.editor.using_evil_line_selection = false; 
+    if cx.editor.using_evil_line_selection {
+        cx.editor.needs_redraw = true;
+        cx.editor.using_evil_line_selection = false; 
+    }
     cx.editor.enter_normal_mode();
-    cx.editor.enter_normal_mode(); // force rerender
+    cx.block_try_flush_writes();
 }
 
 // Store a jump on the jumplist.
