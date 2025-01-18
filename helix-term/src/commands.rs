@@ -3628,7 +3628,6 @@ fn normal_mode(cx: &mut Context) {
         cx.editor.using_evil_line_selection = false; 
     }
     cx.editor.enter_normal_mode();
-    cx.block_try_flush_writes();
 }
 
 // Store a jump on the jumplist.
