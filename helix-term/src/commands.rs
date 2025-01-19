@@ -21,6 +21,7 @@ use helix_core::{
     chars::char_is_word,
     comment,
     doc_formatter::TextFormat,
+    evil::*,
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
     history::UndoKind,
@@ -42,7 +43,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::{Action,ModeConfig},
+    editor::Action,
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -66,7 +67,6 @@ use crate::{
 
 use crate::job::{self, Jobs};
 use std::{
-    borrow::BorrowMut,
     cmp::Ordering,
     collections::{HashMap, HashSet},
     error::Error,
@@ -613,6 +613,7 @@ impl MappableCommand {
         evil_del_next_long_word_start, "Delete until next long word start",
         evil_del_line_start, "Delete until line start",
         evil_del_line_end, "Delete until line end",
+        evil_repeat_find_char_motion, "Repeat last evil find motion",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
@@ -1567,9 +1568,11 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
         let motion = move |editor: &mut Editor| {
             match direction {
                 Direction::Forward => {
+                    evil_update_last_find_op_next(editor, inclusive, ch);
                     find_char_impl(editor, &find_next_char_impl, inclusive, extend, ch, count)
                 }
                 Direction::Backward => {
+                    evil_update_last_find_op_prev(editor, inclusive, ch);
                     find_char_impl(editor, &find_prev_char_impl, inclusive, extend, ch, count)
                 }
             };
@@ -6088,8 +6091,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let text = doc.text().slice(..);
 
     let mut shell_output: Option<Tendril> = None;
-    let mut offset = 0isize;
-    for range in selection.ranges() {
+    let mut offset = 0isize; for range in selection.ranges() {
         let output = if let Some(output) = shell_output.as_ref() {
             output.clone()
         } else {
@@ -6761,4 +6763,62 @@ fn evil_del_line_end(cx: &mut Context) {
     select_mode(cx);    
     goto_line_end(cx);
     delete_selection(cx);    
+}
+
+fn evil_repeat_find_char_motion(cx: &mut Context) {
+    let count = cx.count();
+    let motion = move |editor: &mut Editor| {
+        if let Some(find_op) = editor.last_find_operation {
+            let extend = true;
+            match find_op.op_type {
+                FindOperationType::NextChar => {
+                    find_char_impl(editor, &find_next_char_impl, false, extend, find_op.last_char, count)
+                }
+                FindOperationType::TillNextChar => {
+                    find_char_impl(editor, &find_next_char_impl, true, extend, find_op.last_char, count)
+                }
+                FindOperationType::PrevChar => {
+                    find_char_impl(editor, &find_prev_char_impl, false, extend, find_op.last_char, count)
+                }
+                FindOperationType::TillPrevChar => {
+                    find_char_impl(editor, &find_prev_char_impl, true, extend, find_op.last_char, count)
+                }
+            };
+        }
+    };
+    cx.editor.apply_motion(motion);
+    match cx.editor.mode {
+        Mode::Normal => {
+            EvilCommands::collapse_selections(cx, CollapseMode::ToHead)
+        }
+        _ => {}
+    }
+}
+
+fn evil_update_last_find_op_next(editor: &mut Editor, inclusive: bool, ch: char) {
+    if inclusive {
+        editor.last_find_operation = Some(FindOperation {
+            last_char: ch,
+            op_type: FindOperationType::TillNextChar
+        });
+    } else {
+        editor.last_find_operation = Some(FindOperation {
+            last_char: ch,
+            op_type: FindOperationType::NextChar
+        });
+    }    
+}
+
+fn evil_update_last_find_op_prev(editor: &mut Editor, inclusive: bool, ch: char) {
+    if inclusive {
+        editor.last_find_operation = Some(FindOperation {
+            last_char: ch,
+            op_type: FindOperationType::TillPrevChar
+        });
+    } else {
+        editor.last_find_operation = Some(FindOperation {
+            last_char: ch,
+            op_type: FindOperationType::PrevChar
+        });
+    }    
 }
