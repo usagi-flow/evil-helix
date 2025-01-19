@@ -4709,7 +4709,14 @@ fn indent(cx: &mut Context) {
         }),
     );
     doc.apply(&transaction, view.id);
-    exit_select_mode(cx);
+    // vim usually allows for a user to select and the indent via ">>"
+    // indentations of the selection could normally be repeated via "."
+    // However, helix grammar does not allow for a motion repetition of
+    // this type. The next best thing to do is to persit the selection
+    // so that a user can repeat indentations by pressing > mutiple times
+    if !cx.editor.evil {
+        exit_select_mode(cx);
+    }
 }
 
 fn unindent(cx: &mut Context) {
@@ -4749,7 +4756,9 @@ fn unindent(cx: &mut Context) {
     let transaction = Transaction::change(doc.text(), changes.into_iter());
 
     doc.apply(&transaction, view.id);
-    exit_select_mode(cx);
+    if !cx.editor.evil {
+        exit_select_mode(cx);
+    }
 }
 
 fn format_selections(cx: &mut Context) {
