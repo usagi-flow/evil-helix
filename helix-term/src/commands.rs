@@ -6617,7 +6617,7 @@ where
         } else {
             new_range.anchor = new_range.head;
         }
-        return new_range;
+        new_range
     });
 
     doc.set_selection(view.id, selection);
