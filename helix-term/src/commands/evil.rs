@@ -692,7 +692,7 @@ impl EvilCommands {
     where
         F: FnOnce(&mut Context, Direction, bool, bool),
     {
-        let extend = false;
+        let extend = true; // pretty sure this should be true to match how vim works
         base_fn(cx, direction, inclusive, extend);
         let inner_callback = cx.on_next_key_callback.take();
 
