@@ -600,6 +600,19 @@ impl MappableCommand {
         evil_till_prev_char, "Move till previous occurrence of char (evil)",
         evil_find_prev_char, "Move to previous occurrence of char (evil)",
         evil_enable_vis_line_mode, "Enables visual line mode",
+        evil_del_current_line, "Delete current line",       
+        evil_del_char_left, "Delete char to the left",
+        evil_del_char_right, "Delete char to the right",
+        evil_del_two_lines_down, "Delete current line and next line down",
+        evil_del_two_lines_up, "Delete current line and next line up",
+        evil_del_prev_word_start, "Delete until the start of the previous word",
+        evil_del_next_word_end, "Delete until inner end of next word",
+        evil_del_next_word_start, "Delete until start of next word",
+        evil_del_prev_long_word_start, "Delete until prev long word start",
+        evil_del_next_long_word_end, "Delete until next long word end",
+        evil_del_next_long_word_start, "Delete until next long word start",
+        evil_del_line_start, "Delete until line start",
+        evil_del_line_end, "Delete until line end",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
@@ -6671,4 +6684,81 @@ fn evil_enable_vis_line_mode(cx: &mut Context) {
     }
     cx.editor.using_evil_line_selection = true;
     extend_to_line_bounds(cx);   
+}
+
+fn evil_del_current_line(cx: &mut Context) {
+    select_mode(cx);
+    extend_to_line_bounds(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_char_left(cx: &mut Context) {
+    move_char_left(cx);    
+    delete_selection(cx);    
+}
+
+fn evil_del_char_right(cx: &mut Context) {
+    delete_selection(cx);    
+}
+
+fn evil_del_two_lines_down(cx: &mut Context) {
+    select_mode(cx);
+    extend_visual_line_down(cx);
+    evil_enable_vis_line_mode(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_two_lines_up(cx: &mut Context) {
+    select_mode(cx);
+    extend_visual_line_up(cx);
+    evil_enable_vis_line_mode(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_prev_word_start(cx: &mut Context) {
+    select_mode(cx);    
+    evil_prev_word_start(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_next_word_end(cx: &mut Context) {
+    select_mode(cx);    
+    evil_next_word_end(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_next_word_start(cx: &mut Context) {
+    select_mode(cx);    
+    evil_next_word_start(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_prev_long_word_start(cx: &mut Context) {
+    select_mode(cx);    
+    evil_prev_long_word_start(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_next_long_word_end(cx: &mut Context) {
+    select_mode(cx);    
+    evil_next_long_word_end(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_next_long_word_start(cx: &mut Context) {
+    select_mode(cx);    
+    evil_next_long_word_start(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_line_start(cx: &mut Context) {
+    select_mode(cx);    
+    goto_line_start(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_line_end(cx: &mut Context) {
+    select_mode(cx);    
+    goto_line_end(cx);
+    delete_selection(cx);    
 }
