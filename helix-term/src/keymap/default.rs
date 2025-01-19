@@ -434,6 +434,7 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         //"E" => move_next_long_word_end,
 
         "v" => select_mode,
+        "V" => evil_enable_vis_line_mode,
         // TODO (redundant with count + gg anyway?): "G" => goto_line,
         "g" => { "Goto"
             "g" => goto_file_start,
@@ -467,7 +468,21 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         "A" => insert_at_line_end,
         "o" => open_below,
         "O" => open_above,
-
+        "d" => { "Delete"
+            "d" => evil_del_current_line,
+            "h" => evil_del_char_left,
+            "l" => evil_del_char_right,
+            "j" => evil_del_two_lines_down,
+            "k" => evil_del_two_lines_up,
+            "b" => evil_del_prev_word_start,
+            "e" => evil_del_next_word_end,
+            "w" => evil_del_next_word_start,
+            "B" => evil_del_prev_long_word_start,
+            "E" => evil_del_next_long_word_end,
+            "W" => evil_del_next_long_word_start,
+            "0" => evil_del_line_start,
+            "$" => evil_del_line_end,
+        },
         //"d" => delete_selection,
         //"A-d" => delete_selection_noyank,
         //"c" => change_selection,
@@ -482,7 +497,8 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         "A-minus" => merge_selections,
         "A-_" => merge_consecutive_selections,
         "S" => split_selection,
-        ";" => collapse_selection,
+        //";" => collapse_selection,
+        ";" => evil_repeat_find_char_motion,
         "A-;" => flip_selections,
         "A-o" | "A-up" => expand_selection,
         "A-i" | "A-down" => shrink_selection,
@@ -734,7 +750,7 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         "C-x" => decrement,
 
         "c" => evil_change,
-        "d" => evil_delete,
+        //"d" => evil_delete,
         "x" => evil_delete_immediate,
         "y" => evil_yank,
         "b" => evil_prev_word_start,
@@ -784,6 +800,7 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
             "j" => extend_line_down,
             "w" => extend_to_word,
         },
+        "p" => replace_with_yanked,
     }));
     let insert = keymap!({ "Insert mode"
         "esc" => normal_mode,

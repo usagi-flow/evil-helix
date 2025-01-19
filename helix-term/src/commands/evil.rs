@@ -165,7 +165,7 @@ impl EvilCommands {
                     }
                 }
 
-                return range;
+                range
             }),
         );
     }
@@ -179,7 +179,7 @@ impl EvilCommands {
     }
 
     fn get_mode(cx: &mut Context) -> Mode {
-        return cx.editor.mode();
+        cx.editor.mode()
     }
 
     fn get_selection(cx: &mut Context) -> Option<Selection> {
@@ -251,7 +251,7 @@ impl EvilCommands {
             }
         }
 
-        return selection;
+        selection
     }
 
     fn get_character_based_selection(cx: &mut Context) -> Selection {
@@ -287,8 +287,8 @@ impl EvilCommands {
 
         Ok(doc.selection(view.id).clone().transform(|range| {
             let range = move_prev_word_start(text, range, 1);
-            let range = move_next_word_end(text, range, 1);
-            return range;
+            
+            move_next_word_end(text, range, 1)
         }))
     }
 
@@ -304,7 +304,7 @@ impl EvilCommands {
                 Motion::NextWordEnd => true,
                 Motion::PrevWordStart => false,
                 _ => {
-                    error = Some(format!("Unsupported motion"));
+                    error = Some("Unsupported motion".to_string());
                     return range;
                 }
             };
@@ -360,9 +360,9 @@ impl EvilCommands {
         });
 
         if error.is_none() {
-            return Ok(selection);
+            Ok(selection)
         } else {
-            return Err(error.unwrap());
+            Err(error.unwrap())
         }
     }
 
@@ -388,14 +388,14 @@ impl EvilCommands {
                 end = end.saturating_sub(1); // TODO: we're removing LF, but what about multiple EOL characters?
             }
 
-            return match motion {
+            match motion {
                 Motion::LineStart => Range::new(start, range.anchor.max(range.head)),
                 Motion::LineEnd => Range::new(range.anchor.min(range.head), end),
                 _ => panic!("Unsupported motion"),
-            };
+            }
         });
 
-        return Ok(selection);
+        Ok(selection)
     }
 
     fn get_full_line_based_selection(
@@ -458,11 +458,11 @@ impl EvilCommands {
             }
         }
 
-        return if !inversed {
+        if !inversed {
             (start, end)
         } else {
             (end, start)
-        };
+        }
     }
 
     fn yank_selection(cx: &mut Context, selection: &Selection, _set_status_message: bool) {
@@ -482,11 +482,11 @@ impl EvilCommands {
     fn delete_selection(cx: &mut Context, selection: &Selection, _set_status_message: bool) {
         if cx.register != Some('_') {
             // first yank the selection
-            Self::yank_selection(cx, &selection, false);
+            Self::yank_selection(cx, selection, false);
         };
 
         let (view, doc) = current!(cx.editor);
-        let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+        let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
             (range.from(), range.to(), None)
         });
 
@@ -625,7 +625,7 @@ impl EvilCommands {
 
         if let Some(c) = e.char() {
             // Is the command receiving a modifier?
-            if let Some(modifier) = Modifier::try_from(c).ok() {
+            if let Ok(modifier) = Modifier::try_from(c) {
                 log::trace!("Key callback: Detected modifier key '{}'", c);
 
                 Self::context_mut().modifiers.push(modifier);
@@ -692,7 +692,7 @@ impl EvilCommands {
     where
         F: FnOnce(&mut Context, Direction, bool, bool),
     {
-        let extend = false;
+        let extend = true; // pretty sure this should be true to match how vim works
         base_fn(cx, direction, inclusive, extend);
         let inner_callback = cx.on_next_key_callback.take();
 

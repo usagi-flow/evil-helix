@@ -21,6 +21,7 @@ use helix_core::{
     chars::char_is_word,
     comment,
     doc_formatter::TextFormat,
+    evil::*,
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
     history::UndoKind,
@@ -598,6 +599,21 @@ impl MappableCommand {
         evil_find_next_char, "Move to next occurrence of char (evil)",
         evil_till_prev_char, "Move till previous occurrence of char (evil)",
         evil_find_prev_char, "Move to previous occurrence of char (evil)",
+        evil_enable_vis_line_mode, "Enables visual line mode",
+        evil_del_current_line, "Delete current line",       
+        evil_del_char_left, "Delete char to the left",
+        evil_del_char_right, "Delete char to the right",
+        evil_del_two_lines_down, "Delete current line and next line down",
+        evil_del_two_lines_up, "Delete current line and next line up",
+        evil_del_prev_word_start, "Delete until the start of the previous word",
+        evil_del_next_word_end, "Delete until inner end of next word",
+        evil_del_next_word_start, "Delete until start of next word",
+        evil_del_prev_long_word_start, "Delete until prev long word start",
+        evil_del_next_long_word_end, "Delete until next long word end",
+        evil_del_next_long_word_start, "Delete until next long word start",
+        evil_del_line_start, "Delete until line start",
+        evil_del_line_end, "Delete until line end",
+        evil_repeat_find_char_motion, "Repeat last evil find motion",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
@@ -768,11 +784,14 @@ fn move_visual_line_down(cx: &mut Context) {
     )
 }
 
+
 fn extend_char_left(cx: &mut Context) {
+    cx.editor.using_evil_line_selection = false;
     move_impl(cx, move_horizontally, Direction::Backward, Movement::Extend)
 }
 
 fn extend_char_right(cx: &mut Context) {
+    cx.editor.using_evil_line_selection = false;
     move_impl(cx, move_horizontally, Direction::Forward, Movement::Extend)
 }
 
@@ -790,7 +809,10 @@ fn extend_visual_line_up(cx: &mut Context) {
         move_vertically_visual,
         Direction::Backward,
         Movement::Extend,
-    )
+    );
+    if cx.editor.using_evil_line_selection {
+        extend_to_line_bounds(cx);
+    }
 }
 
 fn extend_visual_line_down(cx: &mut Context) {
@@ -799,7 +821,10 @@ fn extend_visual_line_down(cx: &mut Context) {
         move_vertically_visual,
         Direction::Forward,
         Movement::Extend,
-    )
+    );
+    if cx.editor.using_evil_line_selection {
+        extend_to_line_bounds(cx);
+    }    
 }
 
 fn goto_line_end_impl(view: &mut View, doc: &mut Document, movement: Movement) {
@@ -823,6 +848,7 @@ fn goto_line_end(cx: &mut Context) {
         view,
         doc,
         if cx.editor.mode == Mode::Select {
+            cx.editor.using_evil_line_selection = false; 
             Movement::Extend
         } else {
             Movement::Move
@@ -884,6 +910,7 @@ fn goto_line_start(cx: &mut Context) {
         view,
         doc,
         if cx.editor.mode == Mode::Select {
+            cx.editor.using_evil_line_selection = false; 
             Movement::Extend
         } else {
             Movement::Move
@@ -1545,9 +1572,11 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
         let motion = move |editor: &mut Editor| {
             match direction {
                 Direction::Forward => {
+                    evil_update_last_find_op_next(editor, inclusive, ch);
                     find_char_impl(editor, &find_next_char_impl, inclusive, extend, ch, count)
                 }
                 Direction::Backward => {
+                    evil_update_last_find_op_prev(editor, inclusive, ch);
                     find_char_impl(editor, &find_prev_char_impl, inclusive, extend, ch, count)
                 }
             };
@@ -3614,6 +3643,7 @@ fn open_above(cx: &mut Context) {
 }
 
 fn normal_mode(cx: &mut Context) {
+    cx.editor.using_evil_line_selection = false; 
     cx.editor.enter_normal_mode();
 }
 
@@ -4680,7 +4710,14 @@ fn indent(cx: &mut Context) {
         }),
     );
     doc.apply(&transaction, view.id);
-    exit_select_mode(cx);
+    // vim usually allows for a user to select and the indent via ">>"
+    // indentations of the selection could normally be repeated via "."
+    // However, helix grammar does not allow for a motion repetition of
+    // this type. The next best thing to do is to persit the selection
+    // so that a user can repeat indentations by pressing > mutiple times
+    if !cx.editor.evil {
+        exit_select_mode(cx);
+    }
 }
 
 fn unindent(cx: &mut Context) {
@@ -4720,7 +4757,9 @@ fn unindent(cx: &mut Context) {
     let transaction = Transaction::change(doc.text(), changes.into_iter());
 
     doc.apply(&transaction, view.id);
-    exit_select_mode(cx);
+    if !cx.editor.evil {
+        exit_select_mode(cx);
+    }
 }
 
 fn format_selections(cx: &mut Context) {
@@ -6062,8 +6101,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let text = doc.text().slice(..);
 
     let mut shell_output: Option<Tendril> = None;
-    let mut offset = 0isize;
-    for range in selection.ranges() {
+    let mut offset = 0isize; for range in selection.ranges() {
         let output = if let Some(output) = shell_output.as_ref() {
             output.clone()
         } else {
@@ -6563,31 +6601,31 @@ fn evil_move_word_impl<F>(cx: &mut Context, move_fn: F)
 where
     F: Fn(RopeSlice, Range, usize) -> Range,
 {
+    //not selecting entire line anymore. exit visual line mode
+    cx.editor.using_evil_line_selection = false; 
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let old_head = range.head;
-        let old_anchor = range.anchor;
+        let old_head = range.head as isize;
+        let old_anchor = range.anchor as isize;
         let mut new_range = move_fn(text, range, count);
-
-        new_range.anchor = match cx.editor.mode {
-            // In select mode, use a sticky anchor and move the head only;
-            // keeping in mind that in select mode, with a single char selected,
-            // the anchor typically points *before* the character.
-            Mode::Select if new_range.head < old_head => old_head.max(old_anchor),
-            Mode::Select => old_head.min(old_anchor),
-            // When not in select mode, just move the cursor and do not select
-            _ => new_range.head,
-        };
-
-        return new_range;
+        if cx.editor.mode == Mode::Select {
+            new_range.head = (old_head + (new_range.head as isize - old_head))as usize;
+            new_range.anchor = old_anchor as usize;
+        } else {
+            new_range.anchor = new_range.head;
+        }
+        new_range
     });
 
     doc.set_selection(view.id, selection);
 }
 
+//TODO: This does not work as expected in visual mode
+// currently going back a word swaps the head and anchor
+// vim would just move the head back
 fn evil_prev_word_start(cx: &mut Context) {
     // TODO: evil-specific implementation in evil.rs
     evil_move_word_impl(cx, movement::move_prev_word_start);
@@ -6650,4 +6688,147 @@ fn evil_till_prev_char(cx: &mut Context) {
 
 fn evil_find_prev_char(cx: &mut Context) {
     EvilCommands::find_char(cx, find_char, Direction::Backward, true)
+}
+
+fn evil_enable_vis_line_mode(cx: &mut Context) {
+    if cx.editor.mode != Mode::Select {
+        select_mode(cx);
+    }
+    cx.editor.using_evil_line_selection = true;
+    extend_to_line_bounds(cx);   
+}
+
+fn evil_del_current_line(cx: &mut Context) {
+    select_mode(cx);
+    extend_to_line_bounds(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_char_left(cx: &mut Context) {
+    move_char_left(cx);    
+    delete_selection(cx);    
+}
+
+fn evil_del_char_right(cx: &mut Context) {
+    delete_selection(cx);    
+}
+
+fn evil_del_two_lines_down(cx: &mut Context) {
+    select_mode(cx);
+    extend_visual_line_down(cx);
+    evil_enable_vis_line_mode(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_two_lines_up(cx: &mut Context) {
+    select_mode(cx);
+    extend_visual_line_up(cx);
+    evil_enable_vis_line_mode(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_prev_word_start(cx: &mut Context) {
+    select_mode(cx);    
+    evil_prev_word_start(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_next_word_end(cx: &mut Context) {
+    select_mode(cx);    
+    evil_next_word_end(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_next_word_start(cx: &mut Context) {
+    select_mode(cx);    
+    evil_next_word_start(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_prev_long_word_start(cx: &mut Context) {
+    select_mode(cx);    
+    evil_prev_long_word_start(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_next_long_word_end(cx: &mut Context) {
+    select_mode(cx);    
+    evil_next_long_word_end(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_next_long_word_start(cx: &mut Context) {
+    select_mode(cx);    
+    evil_next_long_word_start(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_line_start(cx: &mut Context) {
+    select_mode(cx);    
+    goto_line_start(cx);
+    delete_selection(cx);    
+}
+
+fn evil_del_line_end(cx: &mut Context) {
+    select_mode(cx);    
+    goto_line_end(cx);
+    delete_selection(cx);    
+}
+
+fn evil_repeat_find_char_motion(cx: &mut Context) {
+    let count = cx.count();
+    let motion = move |editor: &mut Editor| {
+        if let Some(find_op) = editor.last_find_operation {
+            let extend = true;
+            match find_op.op_type {
+                FindOperationType::NextChar => {
+                    find_char_impl(editor, &find_next_char_impl, false, extend, find_op.last_char, count)
+                }
+                FindOperationType::TillNextChar => {
+                    find_char_impl(editor, &find_next_char_impl, true, extend, find_op.last_char, count)
+                }
+                FindOperationType::PrevChar => {
+                    find_char_impl(editor, &find_prev_char_impl, false, extend, find_op.last_char, count)
+                }
+                FindOperationType::TillPrevChar => {
+                    find_char_impl(editor, &find_prev_char_impl, true, extend, find_op.last_char, count)
+                }
+            };
+        }
+    };
+    cx.editor.apply_motion(motion);
+    match cx.editor.mode {
+        Mode::Normal => {
+            EvilCommands::collapse_selections(cx, CollapseMode::ToHead)
+        }
+        _ => {}
+    }
+}
+
+fn evil_update_last_find_op_next(editor: &mut Editor, inclusive: bool, ch: char) {
+    if inclusive {
+        editor.last_find_operation = Some(FindOperation {
+            last_char: ch,
+            op_type: FindOperationType::TillNextChar
+        });
+    } else {
+        editor.last_find_operation = Some(FindOperation {
+            last_char: ch,
+            op_type: FindOperationType::NextChar
+        });
+    }    
+}
+
+fn evil_update_last_find_op_prev(editor: &mut Editor, inclusive: bool, ch: char) {
+    if inclusive {
+        editor.last_find_operation = Some(FindOperation {
+            last_char: ch,
+            op_type: FindOperationType::TillPrevChar
+        });
+    } else {
+        editor.last_find_operation = Some(FindOperation {
+            last_char: ch,
+            op_type: FindOperationType::PrevChar
+        });
+    }    
 }

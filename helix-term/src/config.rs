@@ -188,7 +188,7 @@ impl Config {
         }
 
         log::debug!("Evil mode not explicitly set in local/global config, will enable default");
-        return true;
+        true
     }
 
     pub fn load_default() -> Result<Config, ConfigLoadError> {
