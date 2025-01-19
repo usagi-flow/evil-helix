@@ -800,6 +800,7 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
             "j" => extend_line_down,
             "w" => extend_to_word,
         },
+        "p" => replace_with_yanked,
     }));
     let insert = keymap!({ "Insert mode"
         "esc" => normal_mode,
