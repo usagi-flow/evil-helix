@@ -6605,26 +6605,24 @@ where
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let old_head = range.head;
-        let old_anchor = range.anchor;
+        let old_head = range.head as isize;
+        let old_anchor = range.anchor as isize;
         let mut new_range = move_fn(text, range, count);
-
-        new_range.anchor = match cx.editor.mode {
-            // In select mode, use a sticky anchor and move the head only;
-            // keeping in mind that in select mode, with a single char selected,
-            // the anchor typically points *before* the character.
-            Mode::Select if new_range.head < old_head => old_head.max(old_anchor),
-            Mode::Select => old_head.min(old_anchor),
-            // When not in select mode, just move the cursor and do not select
-            _ => new_range.head,
-        };
-
+        if cx.editor.mode == Mode::Select {
+            new_range.head = (old_head + (new_range.head as isize - old_head))as usize;
+            new_range.anchor = old_anchor as usize;
+        } else {
+            new_range.anchor = new_range.head;
+        }
         return new_range;
     });
 
     doc.set_selection(view.id, selection);
 }
 
+//TODO: This does not work as expected in visual mode
+// currently going back a word swaps the head and anchor
+// vim would just move the head back
 fn evil_prev_word_start(cx: &mut Context) {
     // TODO: evil-specific implementation in evil.rs
     evil_move_word_impl(cx, movement::move_prev_word_start);
