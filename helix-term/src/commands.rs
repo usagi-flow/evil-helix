@@ -6563,29 +6563,14 @@ fn evil_move_word_impl<F>(cx: &mut Context, move_fn: F)
 where
     F: Fn(RopeSlice, Range, usize) -> Range,
 {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let old_head = range.head;
-        let old_anchor = range.anchor;
-        let mut new_range = move_fn(text, range, count);
-
-        new_range.anchor = match cx.editor.mode {
-            // In select mode, use a sticky anchor and move the head only;
-            // keeping in mind that in select mode, with a single char selected,
-            // the anchor typically points *before* the character.
-            Mode::Select if new_range.head < old_head => old_head.max(old_anchor),
-            Mode::Select => old_head.min(old_anchor),
+    match cx.editor.mode {
+        Mode::Select => extend_word_impl(cx, move_fn),
+        _ => {
             // When not in select mode, just move the cursor and do not select
-            _ => new_range.head,
-        };
-
-        return new_range;
-    });
-
-    doc.set_selection(view.id, selection);
+            move_word_impl(cx, move_fn);
+            collapse_selection(cx)
+        }
+    }
 }
 
 fn evil_prev_word_start(cx: &mut Context) {
