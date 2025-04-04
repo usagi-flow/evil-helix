@@ -213,7 +213,7 @@ pub fn move_prev_sub_word_end(slice: RopeSlice, range: Range, count: usize) -> R
     word_move(slice, range, count, WordMotionTarget::PrevSubWordEnd)
 }
 
-fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTarget) -> Range {
+pub fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTarget) -> Range {
     let is_prev = matches!(
         target,
         WordMotionTarget::PrevWordStart
@@ -407,6 +407,9 @@ pub enum WordMotionTarget {
     NextSubWordEnd,
     PrevSubWordStart,
     PrevSubWordEnd,
+    // Evil
+    EvilNextWordStart,
+    EvilNextLongWordStart,
 }
 
 pub trait CharHelpers {
@@ -554,6 +557,14 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
         WordMotionTarget::PrevSubWordStart => {
             is_sub_word_boundary(prev_ch, next_ch, Direction::Backward)
                 && (!(prev_ch.is_whitespace() || prev_ch == '_') || char_is_line_ending(next_ch))
+        }
+        WordMotionTarget::EvilNextWordStart => {
+            is_word_boundary(prev_ch, next_ch)
+                && (!char_is_line_ending(next_ch) && !next_ch.is_whitespace())
+        }
+        WordMotionTarget::EvilNextLongWordStart => {
+            is_long_word_boundary(prev_ch, next_ch)
+                && (!char_is_line_ending(next_ch) && !next_ch.is_whitespace())
         }
     }
 }

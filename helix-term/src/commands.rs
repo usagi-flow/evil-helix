@@ -6580,9 +6580,7 @@ fn evil_prev_word_start(cx: &mut Context) {
 }
 
 fn evil_next_word_start(cx: &mut Context) {
-    // TODO: evil-specific implementation in evil.rs
-    evil_move_word_impl(cx, movement::move_next_word_start);
-    //EvilCommands::next_word_start(cx);
+    evil_move_word_impl(cx, EvilCommands::move_next_word_start);
 }
 
 fn evil_next_word_end(cx: &mut Context) {
@@ -6596,8 +6594,7 @@ fn evil_prev_long_word_start(cx: &mut Context) {
 }
 
 fn evil_next_long_word_start(cx: &mut Context) {
-    // TODO: evil-specific implementation in evil.rs
-    evil_move_word_impl(cx, movement::move_next_long_word_start);
+    evil_move_word_impl(cx, EvilCommands::move_next_long_word_start);
 }
 
 fn evil_next_long_word_end(cx: &mut Context) {

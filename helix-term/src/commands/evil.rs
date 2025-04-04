@@ -5,6 +5,11 @@ use std::{
 
 use helix_core::movement::move_prev_word_start;
 use helix_core::movement::{is_word_boundary, Direction};
+use helix_core::movement::{
+    move_horizontally, word_move, Movement,
+    WordMotionTarget::{EvilNextLongWordStart, EvilNextWordStart},
+};
+use helix_core::{doc_formatter::TextFormat, text_annotations::TextAnnotations, RopeSlice};
 use helix_core::{movement::move_next_word_end, Rope};
 use helix_core::{Range, Selection, Transaction};
 use helix_view::document::Mode;
@@ -709,4 +714,28 @@ impl EvilCommands {
             log::warn!("The find_char base function did not set a key callback");
         }
     }
+
+    pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+        let range1 = move_one_char(slice, range, Direction::Backward);
+        let range2 = word_move(slice, range1, count, EvilNextWordStart);
+        move_one_char(slice, range2, Direction::Forward)
+    }
+
+    pub fn move_next_long_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+        let range1 = move_one_char(slice, range, Direction::Backward);
+        let range2 = word_move(slice, range1, count, EvilNextLongWordStart);
+        move_one_char(slice, range2, Direction::Forward)
+    }
+}
+
+fn move_one_char(slice: RopeSlice, range: Range, direction: Direction) -> Range {
+    move_horizontally(
+        slice,
+        range,
+        direction,
+        1,
+        Movement::Move,
+        &TextFormat::default(),          // Not used
+        &mut TextAnnotations::default(), // Not used
+    )
 }
