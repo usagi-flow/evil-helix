@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs;
 use std::io::Error as IOError;
+use std::path::PathBuf;
 use toml::de::Error as TomlError;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -22,6 +23,19 @@ pub struct ConfigRaw {
     pub theme: Option<String>,
     pub keys: Option<HashMap<Mode, KeyTrie>>,
     pub editor: Option<toml::Value>,
+}
+
+impl ConfigRaw {
+    pub fn load(path: PathBuf) -> Result<Option<ConfigRaw>, ConfigLoadError> {
+        match fs::read_to_string(path) {
+            // Don't treat a missing config file as an error.
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(ConfigLoadError::Error(e)),
+            Ok(s) => toml::from_str(&s)
+                .map(Some)
+                .map_err(ConfigLoadError::BadConfig),
+        }
+    }
 }
 
 impl Default for Config {
@@ -56,80 +70,40 @@ impl Display for ConfigLoadError {
 }
 
 impl Config {
-    pub fn load(
-        global: Result<String, ConfigLoadError>,
-        local: Result<String, ConfigLoadError>,
-    ) -> Result<Config, ConfigLoadError> {
-        let global_config: Result<ConfigRaw, ConfigLoadError> =
-            global.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
-        let local_config: Result<ConfigRaw, ConfigLoadError> =
-            local.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
-        let res = match (global_config, local_config) {
-            (Ok(global), Ok(local)) => {
-                let mut keys = keymap::default();
-                if let Some(global_keys) = global.keys {
-                    merge_keys(&mut keys, global_keys)
-                }
-                if let Some(local_keys) = local.keys {
-                    merge_keys(&mut keys, local_keys)
-                }
-
-                let editor = match (global.editor, local.editor) {
-                    (None, None) => helix_view::editor::Config::default(),
-                    (None, Some(val)) | (Some(val), None) => {
-                        val.try_into().map_err(ConfigLoadError::BadConfig)?
-                    }
-                    (Some(global), Some(local)) => merge_toml_values_with_strategy(
-                        global,
-                        local,
-                        &MergeStrategy {
-                            array: MergeMode::Never,
-                            table: MergeMode::Always,
-                        },
-                    )
-                    .try_into()
-                    .map_err(ConfigLoadError::BadConfig)?,
-                };
-
-                Config {
-                    theme: local.theme.or(global.theme),
-                    keys,
+    /// Merge a ConfigRaw value into a Config.
+    pub fn apply(&mut self, opt_config_raw: Option<ConfigRaw>) -> Result<(), ConfigLoadError> {
+        if let Some(config_raw) = opt_config_raw {
+            if let Some(theme) = config_raw.theme {
+                self.theme = Some(theme)
+            }
+            if let Some(keymap) = config_raw.keys {
+                merge_keys(&mut self.keys, keymap)
+            }
+            if let Some(editor) = config_raw.editor {
+                // We only know how to merge toml values, so convert back to toml first.
+                let val = toml::Value::try_from(&self.editor).unwrap();
+                self.editor = merge_toml_values_with_strategy(
+                    val,
                     editor,
-                }
+                    &MergeStrategy {
+                        array: MergeMode::Never,
+                        table: MergeMode::Always,
+                    },
+                )
+                .try_into()
+                .map_err(ConfigLoadError::BadConfig)?
             }
-            // if any configs are invalid return that first
-            (_, Err(ConfigLoadError::BadConfig(err)))
-            | (Err(ConfigLoadError::BadConfig(err)), _) => {
-                return Err(ConfigLoadError::BadConfig(err))
-            }
-            (Ok(config), Err(_)) | (Err(_), Ok(config)) => {
-                let mut keys = keymap::default();
-                if let Some(keymap) = config.keys {
-                    merge_keys(&mut keys, keymap);
-                }
-                Config {
-                    theme: config.theme,
-                    keys,
-                    editor: config.editor.map_or_else(
-                        || Ok(helix_view::editor::Config::default()),
-                        |val| val.try_into().map_err(ConfigLoadError::BadConfig),
-                    )?,
-                }
-            }
-
-            // these are just two io errors return the one for the global config
-            (Err(err), Err(_)) => return Err(err),
-        };
-
-        Ok(res)
+        }
+        Ok(())
     }
 
     pub fn load_default() -> Result<Config, ConfigLoadError> {
-        let global_config =
-            fs::read_to_string(helix_loader::config_file()).map_err(ConfigLoadError::Error);
-        let local_config = fs::read_to_string(helix_loader::workspace_config_file())
-            .map_err(ConfigLoadError::Error);
-        Config::load(global_config, local_config)
+        let mut config = Config::default();
+        let global = ConfigRaw::load(helix_loader::config_file())?;
+        let local = ConfigRaw::load(helix_loader::workspace_config_file())?;
+        config.apply(global)?;
+        config.apply(local)?;
+        Ok(config)
     }
 }
 
@@ -139,7 +113,12 @@ mod tests {
 
     impl Config {
         fn load_test(global: &str, local: &str) -> Config {
-            Config::load(Ok(global.to_owned()), Ok(local.to_owned())).unwrap()
+            let mut config = Config::default();
+            let global = Some(toml::from_str(&global).unwrap());
+            let local = Some(toml::from_str(&local).unwrap());
+            config.apply(global).unwrap();
+            config.apply(local).unwrap();
+            config
         }
     }
 
@@ -172,6 +151,13 @@ mod tests {
         "#;
         let config = Config::load_test(global, local);
         assert_eq!(config.editor.shell, ["fish", "-c"]);
+    }
+
+    #[test]
+    fn load_non_existing_config() {
+        let path = PathBuf::from(r"does-not-exist");
+        let result = ConfigRaw::load(path);
+        assert!(result.is_ok_and(|x| x.is_none()));
     }
 
     #[test]
