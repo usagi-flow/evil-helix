@@ -42,6 +42,16 @@ impl Default for Config {
     fn default() -> Config {
         Config {
             theme: None,
+            keys: keymap::default_evil(),
+            editor: helix_view::editor::Config::default_evil(),
+        }
+    }
+}
+
+impl Config {
+    pub fn default_helix() -> Config {
+        Config {
+            theme: None,
             keys: keymap::default(),
             editor: helix_view::editor::Config::default(),
         }
@@ -101,8 +111,14 @@ impl Config {
         let mut config = Config::default();
         let global = ConfigRaw::load(helix_loader::config_file())?;
         let local = ConfigRaw::load(helix_loader::workspace_config_file())?;
-        config.apply(global)?;
-        config.apply(local)?;
+        config.apply(global.clone())?;
+        config.apply(local.clone())?;
+        if !config.editor.evil {
+            // Deactivate evil-helix behavior.
+            config = Config::default_helix();
+            config.apply(global)?;
+            config.apply(local)?;
+        }
         Ok(config)
     }
 }
@@ -175,7 +191,7 @@ mod tests {
             A-F12 = "move_next_word_end"
         "#;
 
-        let mut keys = keymap::default();
+        let mut keys = keymap::default_evil();
         merge_keys(
             &mut keys,
             hashmap! {
@@ -202,10 +218,10 @@ mod tests {
     fn keys_resolve_to_correct_defaults() {
         // From serde default
         let default_keys = Config::load_test("", "").keys;
-        assert_eq!(default_keys, keymap::default());
+        assert_eq!(default_keys, keymap::default_evil());
 
         // From the Default trait
         let default_keys = Config::default().keys;
-        assert_eq!(default_keys, keymap::default());
+        assert_eq!(default_keys, keymap::default_evil());
     }
 }
