@@ -2,7 +2,6 @@ use crate::keymap;
 use crate::keymap::{merge_keys, KeyTrie};
 use helix_loader::merge_toml_values;
 use helix_view::document::Mode;
-use helix_view::editor::ModeConfig;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -29,8 +28,8 @@ impl Default for Config {
     fn default() -> Config {
         Config {
             theme: None,
-            keys: keymap::default_evil(),
-            editor: helix_view::editor::Config::default_evil(),
+            keys: keymap::default(),
+            editor: helix_view::editor::Config::default(),
         }
     }
 }
@@ -65,15 +64,9 @@ impl Config {
             global.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
         let local_config: Result<ConfigRaw, ConfigLoadError> =
             local.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
-        let evil = Self::is_evil(&global_config, &local_config);
-        let mut res = match (global_config, local_config) {
+        let res = match (global_config, local_config) {
             (Ok(global), Ok(local)) => {
-                let mut keys = if !evil {
-                    keymap::default()
-                } else {
-                    keymap::default_evil()
-                };
-
+                let mut keys = keymap::default();
                 if let Some(global_keys) = global.keys {
                     merge_keys(&mut keys, global_keys)
                 }
@@ -82,7 +75,7 @@ impl Config {
                 }
 
                 let editor = match (global.editor, local.editor) {
-                    (None, None) => helix_view::editor::Config::default_evil(),
+                    (None, None) => helix_view::editor::Config::default(),
                     (None, Some(val)) | (Some(val), None) => {
                         val.try_into().map_err(ConfigLoadError::BadConfig)?
                     }
@@ -103,12 +96,7 @@ impl Config {
                 return Err(ConfigLoadError::BadConfig(err))
             }
             (Ok(config), Err(_)) | (Err(_), Ok(config)) => {
-                let mut keys = if !evil {
-                    keymap::default()
-                } else {
-                    keymap::default_evil()
-                };
-
+                let mut keys = keymap::default();
                 if let Some(keymap) = config.keys {
                     merge_keys(&mut keys, keymap);
                 }
@@ -116,7 +104,7 @@ impl Config {
                     theme: config.theme,
                     keys,
                     editor: config.editor.map_or_else(
-                        || Ok(helix_view::editor::Config::default_evil()),
+                        || Ok(helix_view::editor::Config::default()),
                         |val| val.try_into().map_err(ConfigLoadError::BadConfig),
                     )?,
                 }
@@ -126,69 +114,7 @@ impl Config {
             (Err(err), Err(_)) => return Err(err),
         };
 
-        // HACK: because we can't easily differentiate between "no configuration" and
-        // "explicit non-evil mode configuration"
-        if evil {
-            res.editor.statusline.mode = ModeConfig::default_evil();
-        }
-
         Ok(res)
-    }
-
-    fn is_evil(
-        global_config: &Result<ConfigRaw, ConfigLoadError>,
-        local_config: &Result<ConfigRaw, ConfigLoadError>,
-    ) -> bool {
-        if local_config.is_ok()
-            && local_config.as_ref().unwrap().editor.is_some()
-            && local_config
-                .as_ref()
-                .unwrap()
-                .editor
-                .as_ref()
-                .unwrap()
-                .get("evil")
-                .is_some()
-        {
-            log::info!("Retrieving evil mode from local config");
-            return local_config
-                .as_ref()
-                .unwrap()
-                .editor
-                .as_ref()
-                .unwrap()
-                .get("evil")
-                .unwrap()
-                .as_bool()
-                .expect("Incorrect type for `editor.config`, expected `bool`");
-        }
-
-        if global_config.is_ok()
-            && global_config.as_ref().unwrap().editor.is_some()
-            && global_config
-                .as_ref()
-                .unwrap()
-                .editor
-                .as_ref()
-                .unwrap()
-                .get("evil")
-                .is_some()
-        {
-            log::info!("Retrieving evil mode from global config");
-            return global_config
-                .as_ref()
-                .unwrap()
-                .editor
-                .as_ref()
-                .unwrap()
-                .get("evil")
-                .unwrap()
-                .as_bool()
-                .expect("Incorrect type for `editor.config`, expected `bool`");
-        }
-
-        log::debug!("Evil mode not explicitly set in local/global config, will enable default");
-        return true;
     }
 
     pub fn load_default() -> Result<Config, ConfigLoadError> {
@@ -225,7 +151,7 @@ mod tests {
             A-F12 = "move_next_word_end"
         "#;
 
-        let mut keys = keymap::default_evil();
+        let mut keys = keymap::default();
         merge_keys(
             &mut keys,
             hashmap! {
@@ -252,10 +178,10 @@ mod tests {
     fn keys_resolve_to_correct_defaults() {
         // From serde default
         let default_keys = Config::load_test("").keys;
-        assert_eq!(default_keys, keymap::default_evil());
+        assert_eq!(default_keys, keymap::default());
 
         // From the Default trait
         let default_keys = Config::default().keys;
-        assert_eq!(default_keys, keymap::default_evil());
+        assert_eq!(default_keys, keymap::default());
     }
 }
