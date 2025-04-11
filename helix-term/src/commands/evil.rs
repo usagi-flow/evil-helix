@@ -473,17 +473,20 @@ impl EvilCommands {
     }
 
     fn yank_selection(cx: &mut Context, selection: &Selection, _set_status_message: bool) {
-        let (_view, doc) = current!(cx.editor);
+        // Copy/paste of `yank` and `yank_impl` from commands.rs.
+        let editor = &mut cx.editor;
+        let register = cx.register.unwrap_or(editor.config().default_yank_register);
 
+        let (_view, doc) = current!(editor);
         let text = doc.text().slice(..);
 
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
         let _selections = values.len();
 
-        let _ = cx
-            .editor
-            .registers
-            .write(cx.register.unwrap_or('"'), values);
+        match editor.registers.write(register, values) {
+            Ok(_) => {}
+            Err(err) => editor.set_error(err.to_string()),
+        }
     }
 
     fn delete_selection(cx: &mut Context, selection: &Selection, _set_status_message: bool) {
