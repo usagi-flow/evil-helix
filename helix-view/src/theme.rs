@@ -395,13 +395,14 @@ impl Theme {
     }
 
     fn from_keys(toml_keys: Map<String, Value>) -> (Self, Vec<String>) {
-        let (styles, scopes, highlights, load_errors, _rainbow_length) =
+        let (styles, scopes, highlights, load_errors, rainbow_length) =
             build_theme_values(toml_keys);
 
         let theme = Self {
             styles,
             scopes,
             highlights,
+            rainbow_length,
             ..Default::default()
         };
         (theme, load_errors)
