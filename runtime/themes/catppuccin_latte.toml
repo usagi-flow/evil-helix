@@ -1,5 +1,7 @@
 inherits = "catppuccin_mocha"
 
+rainbow = ["red", "yellow", "green", "blue", "teal", "pink"]
+
 [palette]
 rosewater = "#dc8a78"
 flamingo = "#dd7878"

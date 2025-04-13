@@ -121,6 +121,8 @@
 "diagnostic.info" = { underline = { color = "sky", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "teal", style = "curl" } }
 
+rainbow = ["red", "yellow", "green", "blue", "teal", "pink"]
+
 error = "red"
 warning = "yellow"
 info = "sky"
