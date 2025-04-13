@@ -357,6 +357,8 @@ fn build_theme_values(
         styles.insert(name.clone(), style);
         scopes.push(name);
         highlights.push(style);
+        .iter()
+        .enumerate()
         rainbow_length += 1;
     }
 
@@ -505,6 +507,25 @@ impl Theme {
         };
         (theme, load_errors)
     }
+
+    pub fn rainbow_length(&self) -> usize {
+        self.rainbow_length
+    }
+
+    pub fn get_rainbow(&self, index: usize) -> Style {
+        self.highlights[index % self.rainbow_length]
+    }
+}
+
+fn default_rainbow() -> Vec<Style> {
+    vec![
+        Style::default().fg(Color::Red),
+        Style::default().fg(Color::Yellow),
+        Style::default().fg(Color::Green),
+        Style::default().fg(Color::Blue),
+        Style::default().fg(Color::Cyan),
+        Style::default().fg(Color::Magenta),
+    ]
 }
 
 struct ThemePalette {
@@ -631,6 +652,9 @@ impl ThemePalette {
         Ok(())
     }
 
+    /// Parses a TOML array into a [`Vec`] of [`Style`]. If the value cannot be
+    /// parsed as an array or if any style in the array cannot be parsed then an
+    /// error is returned.
     fn parse_style_array(&self, value: Value) -> Result<Vec<Style>, String> {
         let mut styles = Vec::new();
 
@@ -718,6 +742,53 @@ mod tests {
                 .bg(Color::Rgb(0, 0, 0))
                 .add_modifier(Modifier::BOLD)
         );
+    }
+
+    #[test]
+    fn test_parse_valid_style_array() {
+        let theme = toml::toml! {
+            rainbow = ["#ff0000", "#ffa500", "#fff000", { fg = "#00ff00", modifiers = ["bold"] }]
+        };
+
+        let palette = ThemePalette::default();
+
+        let rainbow = theme.get("rainbow").unwrap();
+        let parse_result = palette.parse_style_array(rainbow.clone());
+
+        assert_eq!(
+            Ok(vec![
+                Style::default().fg(Color::Rgb(255, 0, 0)),
+                Style::default().fg(Color::Rgb(255, 165, 0)),
+                Style::default().fg(Color::Rgb(255, 240, 0)),
+                Style::default()
+                    .fg(Color::Rgb(0, 255, 0))
+                    .add_modifier(Modifier::BOLD),
+            ]),
+            parse_result
+        )
+    }
+
+    #[test]
+    fn test_parse_invalid_style_array() {
+        let palette = ThemePalette::default();
+
+        let theme = toml::toml! { invalid_hex_code = ["#f00"] };
+        let invalid_hex_code = theme.get("invalid_hex_code").unwrap();
+        let parse_result = palette.parse_style_array(invalid_hex_code.clone());
+
+        assert_eq!(
+            Err("Theme: malformed hexcode: #f00".to_string()),
+            parse_result
+        );
+
+        let theme = toml::toml! { not_an_array = { red = "#ff0000" } };
+        let not_an_array = theme.get("not_an_array").unwrap();
+        let parse_result = palette.parse_style_array(not_an_array.clone());
+
+        assert_eq!(
+            Err("Theme: could not parse value as an array: '{ red = \"#ff0000\" }'".to_string()),
+            parse_result
+        )
     }
 
     // tests for parsing an RGB `Highlight`
