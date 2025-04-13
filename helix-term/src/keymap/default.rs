@@ -413,10 +413,10 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
 pub fn default_evil() -> HashMap<Mode, KeyTrie> {
     let normal = keymap!({ "Normal mode"
-        "h" | "left" => move_char_left,
-        "j" | "down" => move_visual_line_down,
-        "k" | "up" => move_visual_line_up,
-        "l" | "right" => move_char_right,
+        "h" | "left" => move_same_line_char_left,
+        "j" | "down" => move_anchored_visual_line_down,
+        "k" | "up" => move_anchored_visual_line_up,
+        "l" | "right" => move_same_line_char_right,
 
         "t" => evil_find_till_char,
         "f" => evil_find_next_char,
@@ -462,8 +462,8 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
             "m" => goto_last_modified_file,
             "n" => goto_next_buffer,
             "p" => goto_previous_buffer,
-            "k" => move_line_up,
-            "j" => move_line_down,
+            "k" => move_anchored_line_up,
+            "j" => move_anchored_line_down,
             "." => goto_last_modification,
             "w" => goto_word,
         },
@@ -471,7 +471,7 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
 
         "i" => insert_mode,
         "I" => insert_at_line_start,
-        "a" => append_mode,
+        "a" => evil_append_mode,
         "A" => insert_at_line_end,
         "o" => open_below,
         "O" => open_above,
@@ -759,10 +759,10 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
     });
     let mut select = normal.clone();
     select.merge_nodes(keymap!({ "Select mode"
-        "h" | "left" => extend_char_left,
-        "j" | "down" => extend_visual_line_down,
-        "k" | "up" => extend_visual_line_up,
-        "l" | "right" => extend_char_right,
+        "h" | "left" => extend_same_line_char_left,
+        "j" | "down" => extend_anchored_visual_line_down,
+        "k" | "up" => extend_anchored_visual_line_up,
+        "l" | "right" => extend_same_line_char_right,
 
         //"w" => extend_next_word_start,
         //"b" => extend_prev_word_start,
@@ -788,8 +788,8 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
 
         "v" => normal_mode,
         "g" => { "Goto"
-            "k" => extend_line_up,
-            "j" => extend_line_down,
+            "k" => extend_anchored_line_up,
+            "j" => extend_anchored_line_down,
             "w" => extend_to_word,
         },
     }));
