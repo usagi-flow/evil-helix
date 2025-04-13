@@ -463,7 +463,7 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
 
         "i" => insert_mode,
         "I" => insert_at_line_start,
-        "a" => append_mode_same_line,
+        "a" => evil_append_mode,
         "A" => insert_at_line_end,
         "o" => open_below,
         "O" => open_above,
