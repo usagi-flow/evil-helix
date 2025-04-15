@@ -18,13 +18,19 @@ use once_cell::sync::Lazy;
 
 use crate::commands::{enter_insert_mode, exit_select_mode, Context, Extend, Operation};
 
-use super::{select_mode, OnKeyCallbackKind};
+use super::OnKeyCallbackKind;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Command {
     Yank,
     Delete,
     Change,
+}
+
+#[derive(Copy, Clone)]
+enum SetMode {
+    Normal,
+    Insert,
 }
 
 impl TryFrom<char> for Command {
@@ -96,7 +102,7 @@ struct EvilContext {
     motion: Option<Motion>,
     count: Option<usize>,
     modifiers: Vec<Modifier>,
-    set_mode: Option<Mode>,
+    set_mode: Option<SetMode>,
 }
 
 impl EvilContext {
@@ -501,7 +507,7 @@ impl EvilCommands {
         doc.apply(&transaction, view.id);
     }
 
-    fn evil_command(cx: &mut Context, requested_command: Command, set_mode: Option<Mode>) {
+    fn evil_command(cx: &mut Context, requested_command: Command, set_mode: Option<SetMode>) {
         let active_command;
         {
             active_command = Self::context().command;
@@ -548,14 +554,11 @@ impl EvilCommands {
                 let set_mode = Self::context().set_mode;
                 if let Some(mode) = set_mode {
                     match mode {
-                        Mode::Normal => {
+                        SetMode::Normal => {
                             exit_select_mode(cx);
                         }
-                        Mode::Insert => {
+                        SetMode::Insert => {
                             enter_insert_mode(cx);
-                        }
-                        Mode::Select => {
-                            select_mode(cx);
                         }
                     }
                 } else {
@@ -682,8 +685,8 @@ impl EvilCommands {
                 Operation::Change => Command::Change,
             },
             Some(match op {
-                Operation::Delete => Mode::Normal,
-                Operation::Change => Mode::Insert,
+                Operation::Delete => SetMode::Normal,
+                Operation::Change => SetMode::Insert,
             }),
         );
     }

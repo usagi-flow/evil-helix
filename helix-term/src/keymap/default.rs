@@ -433,7 +433,8 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         //"B" => move_prev_long_word_start,
         //"E" => move_next_long_word_end,
 
-        "v" => select_mode,
+        "v" => evil_characterwise_select_mode,
+        "V" => evil_linewise_select_mode,
         // TODO (redundant with count + gg anyway?): "G" => goto_line,
         "g" => { "Goto"
             "g" => goto_file_start,
@@ -781,7 +782,6 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         "end" => extend_to_line_end,
         "esc" => exit_select_mode,
 
-        "v" => normal_mode,
         "g" => { "Goto"
             "k" => extend_anchored_line_up,
             "j" => extend_anchored_line_down,

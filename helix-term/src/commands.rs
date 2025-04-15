@@ -40,6 +40,7 @@ use helix_core::{
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
     RopeReader, RopeSlice, Selection, SmallVec, Syntax, Tendril, Transaction,
 };
+use helix_view::editor::EvilSelectMode;
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::Action,
@@ -614,6 +615,8 @@ impl MappableCommand {
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
+        evil_characterwise_select_mode, "Enter/exit characterwise select mode",
+        evil_linewise_select_mode, "Enter/exit linewise select mode",
         goto_next_tabstop, "goto next snippet placeholder",
         goto_prev_tabstop, "goto next snippet placeholder",
     );
@@ -6780,6 +6783,38 @@ fn evil_till_prev_char(cx: &mut Context) {
 
 fn evil_find_prev_char(cx: &mut Context) {
     EvilCommands::find_char(cx, find_char, Direction::Backward, true)
+}
+
+fn evil_characterwise_select_mode(cx: &mut Context) {
+    fn switch_to_characterwise(cx: &mut Context) {
+        cx.editor.evil_select_mode = EvilSelectMode::CharacterWise;
+    }
+
+    if cx.editor.mode != Mode::Select {
+        select_mode(cx);
+        switch_to_characterwise(cx);
+    } else {
+        match cx.editor.evil_select_mode {
+            EvilSelectMode::LineWise => switch_to_characterwise(cx),
+            EvilSelectMode::CharacterWise => exit_select_mode(cx),
+        }
+    }
+}
+
+fn evil_linewise_select_mode(cx: &mut Context) {
+    fn switch_to_linewise(cx: &mut Context) {
+        cx.editor.evil_select_mode = EvilSelectMode::LineWise;
+    }
+
+    if cx.editor.mode != Mode::Select {
+        select_mode(cx);
+        switch_to_linewise(cx);
+    } else {
+        match cx.editor.evil_select_mode {
+            EvilSelectMode::LineWise => exit_select_mode(cx),
+            EvilSelectMode::CharacterWise => switch_to_linewise(cx),
+        }
+    }
 }
 
 fn evil_append_mode(cx: &mut Context) {

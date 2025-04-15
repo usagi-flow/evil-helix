@@ -138,7 +138,7 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     match element_id {
-        helix_view::editor::StatusLineElement::Mode => render_mode,
+        helix_view::editor::StatusLineElement::Mode => evil_render_mode,
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
         helix_view::editor::StatusLineElement::FileBaseName => render_file_base_name,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
@@ -198,6 +198,28 @@ where
             None
         },
     );
+}
+
+fn evil_render_mode<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    render_mode(context, write);
+
+    let visible = context.focused;
+    let config = context.editor.config();
+
+    if visible && context.editor.mode == Mode::Select {
+        write(
+            context,
+            format!("{} ", context.editor.evil_select_mode)
+                .trim_start()
+                .to_string(),
+            config
+                .color_modes
+                .then_some(context.editor.theme.get("ui.statusline.select")),
+        )
+    }
 }
 
 // TODO think about handling multiple language servers

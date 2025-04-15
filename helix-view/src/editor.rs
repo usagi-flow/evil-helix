@@ -1098,8 +1098,24 @@ pub struct Breakpoint {
 
 use futures_util::stream::{Flatten, Once};
 
+#[derive(Copy, Clone)]
+pub enum EvilSelectMode {
+    CharacterWise,
+    LineWise,
+    //BlockWise,
+}
+
+impl std::fmt::Display for EvilSelectMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::CharacterWise => f.write_str(""),
+            Self::LineWise => f.write_str("LINE"),
+        }
+    }
+}
+
 pub struct Editor {
-    pub evil: bool,
+    pub evil_select_mode: EvilSelectMode,
 
     /// Current editing mode.
     pub mode: Mode,
@@ -1253,7 +1269,7 @@ impl Editor {
         area.height -= 1;
 
         Self {
-            evil: conf.evil,
+            evil_select_mode: EvilSelectMode::CharacterWise,
             mode: Mode::Normal,
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
