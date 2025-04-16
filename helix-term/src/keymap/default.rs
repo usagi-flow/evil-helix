@@ -764,6 +764,9 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         "k" | "up" => extend_anchored_visual_line_up,
         "l" | "right" => extend_same_line_char_right,
 
+        "a" => select_textobject_around,
+        "i" => select_textobject_inner,
+
         //"w" => extend_next_word_start,
         //"b" => extend_prev_word_start,
         //"e" => extend_next_word_end,
