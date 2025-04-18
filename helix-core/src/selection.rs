@@ -633,6 +633,19 @@ impl Selection {
         selection.normalize()
     }
 
+    pub fn evil_new_no_normalize(ranges: SmallVec<[Range; 1]>, primary_index: usize) -> Self {
+        // Copy/paste of `new`, without the call to `normalize`.
+        assert!(!ranges.is_empty());
+        debug_assert!(primary_index < ranges.len());
+
+        let selection = Self {
+            ranges,
+            primary_index,
+        };
+
+        selection
+    }
+
     /// Takes a closure and maps each `Range` over the closure.
     pub fn transform<F>(mut self, mut f: F) -> Self
     where
@@ -642,6 +655,17 @@ impl Selection {
             *range = f(*range)
         }
         self.normalize()
+    }
+
+    pub fn evil_transform_no_normalize<F>(mut self, mut f: F) -> Self
+    where
+        F: FnMut(Range) -> Range,
+    {
+        // Copy/paste of `transform`, without the call to `normalize`.
+        for range in self.ranges.iter_mut() {
+            *range = f(*range)
+        }
+        self
     }
 
     /// Takes a closure and maps each `Range` over the closure to multiple `Range`s.
@@ -663,6 +687,11 @@ impl Selection {
     pub fn ensure_invariants(self, text: RopeSlice) -> Self {
         self.transform(|r| r.min_width_1(text).grapheme_aligned(text))
             .normalize()
+    }
+
+    pub fn evil_ensure_invariants_no_normalize(self, text: RopeSlice) -> Self {
+        // Copy/paste of `ensure_invariants`, without the call to `normalize`.
+        self.evil_transform_no_normalize(|r| r.min_width_1(text).grapheme_aligned(text))
     }
 
     /// Transforms the selection into all of the left-side head positions,

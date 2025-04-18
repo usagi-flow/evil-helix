@@ -38,6 +38,7 @@ These are the current differences compared to the upstream project:
 	-	Commands: `a`, `c`, `d`, `y`, `x`
 	-	Modifiers: `i`
 	-	Motions: `w`, `W`, `e`, `E`, `b`, `B`, `0`, `$`
+	-	Visual line mode: `V`
 -	Adjusted defaults ([511060a](https://github.com/usagi-flow/evil-helix/commit/511060abcfcbe9377ec50e8a0ecaf4c0660776bb)):
 	-	The Helix "SEL" mode is called "VIS"
 	-	Smart tab is disabled by default

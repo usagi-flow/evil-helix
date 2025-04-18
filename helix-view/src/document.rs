@@ -1246,6 +1246,18 @@ impl Document {
         })
     }
 
+    pub fn evil_set_selection_no_normalize(&mut self, view_id: ViewId, selection: Selection) {
+        // Copy/paste of `set_selection`, without the call to `ensure_invariants`.
+        self.selections.insert(
+            view_id,
+            selection.evil_ensure_invariants_no_normalize(self.text.slice(..)),
+        );
+        helix_event::dispatch(SelectionDidChange {
+            doc: self,
+            view: view_id,
+        });
+    }
+
     /// Find the origin selection of the text in a document, i.e. where
     /// a single cursor would go if it were on the first grapheme. If
     /// the text is empty, returns (0, 0).
