@@ -21,6 +21,7 @@ use tui::{
 };
 pub use typed::*;
 
+use helix_core::smallvec;
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
@@ -46,6 +47,7 @@ use helix_core::{
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeReader, RopeSlice,
     Selection, SmallVec, Syntax, Tendril, Transaction,
 };
+use helix_view::editor::EvilSelectMode;
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
@@ -134,6 +136,20 @@ impl Context<'_> {
         &mut self,
         on_next_key_callback: impl FnOnce(&mut Context, KeyEvent) + 'static,
     ) {
+        if evil_is_select_mode_linewise(self) {
+            return self.on_next_key_callback = Some((
+                Box::new(|cx: &mut Context, e: KeyEvent| {
+                    // See NOTE LineWise Select
+                    keep_primary_selection(cx);
+                    on_next_key_callback(cx, e);
+                    if evil_is_select_mode_linewise(cx) {
+                        evil_transform_selection_linewise(cx)
+                    }
+                }),
+                OnKeyCallbackKind::PseudoPending,
+            ));
+        };
+
         self.on_next_key_callback = Some((
             Box::new(on_next_key_callback),
             OnKeyCallbackKind::PseudoPending,
@@ -248,6 +264,28 @@ macro_rules! static_commands {
 
 impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
+        if evil_is_select_mode_linewise(cx) {
+            // NOTE LineWise Select
+            // ======================
+            // We are in LineWise Select mode, so we have a selection
+            // with two overlapping ranges: the primary (helix) range
+            // and a secondary (evil-helix only) range that stretches
+            // until the end of the line.
+            //
+            // The command that we are currently processing is likely
+            // going to call `selection.transform`, which calls
+            // `selection.normalize` afterwards, which merges all
+            // overlapping ranges into a single range and puts the
+            // cursor at the end of that range. This is not what we
+            // want (we'd lose track of the cursor position).
+            //
+            // Therefore we:
+            // - first call `keep_primary_selection`
+            // - then process the command using the primary range only
+            // - then create the new secondary range (below)
+            keep_primary_selection(cx)
+        }
+
         match &self {
             Self::Typable { name, args, doc: _ } => {
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
@@ -283,6 +321,10 @@ impl MappableCommand {
                     cx.editor.macro_replaying.pop();
                 }));
             }
+        }
+
+        if evil_is_select_mode_linewise(cx) {
+            evil_transform_selection_linewise(cx)
         }
     }
 
@@ -638,6 +680,8 @@ impl MappableCommand {
         evil_till_prev_char, "Move till previous occurrence of char (evil)",
         evil_find_prev_char, "Move to previous occurrence of char (evil)",
         evil_append_mode, "Append after character",
+        evil_characterwise_select_mode, "Enter/exit characterwise select mode",
+        evil_linewise_select_mode, "Enter/exit linewise select mode",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
@@ -4310,6 +4354,7 @@ pub fn select_mode(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 
     cx.editor.mode = Mode::Select;
+    cx.editor.evil_select_mode = EvilSelectMode::CharacterWise;
 }
 
 pub fn exit_select_mode(cx: &mut Context) {
@@ -7455,6 +7500,9 @@ fn evil_delete(cx: &mut Context) {
 }
 
 fn evil_delete_immediate(cx: &mut Context) {
+    if evil_is_select_mode_linewise(cx) {
+        extend_to_line_bounds(cx);
+    }
     EvilCommands::delete_immediate(cx);
 }
 
@@ -7480,6 +7528,87 @@ fn evil_till_prev_char(cx: &mut Context) {
 
 fn evil_find_prev_char(cx: &mut Context) {
     EvilCommands::find_char(cx, find_char, Direction::Backward, true)
+}
+
+fn evil_characterwise_select_mode(cx: &mut Context) {
+    fn switch_to_characterwise(cx: &mut Context) {
+        cx.editor.evil_select_mode = EvilSelectMode::CharacterWise;
+    }
+
+    if cx.editor.mode != Mode::Select {
+        select_mode(cx);
+        switch_to_characterwise(cx);
+    } else {
+        match cx.editor.evil_select_mode {
+            EvilSelectMode::LineWise => switch_to_characterwise(cx),
+            EvilSelectMode::CharacterWise => exit_select_mode(cx),
+        }
+    }
+}
+
+fn evil_linewise_select_mode(cx: &mut Context) {
+    fn switch_to_linewise(cx: &mut Context) {
+        cx.editor.evil_select_mode = EvilSelectMode::LineWise;
+    }
+
+    if cx.editor.mode != Mode::Select {
+        select_mode(cx);
+        switch_to_linewise(cx);
+    } else {
+        match cx.editor.evil_select_mode {
+            EvilSelectMode::LineWise => exit_select_mode(cx),
+            EvilSelectMode::CharacterWise => switch_to_linewise(cx),
+        }
+    }
+}
+
+fn evil_is_select_mode_linewise(cx: &Context) -> bool {
+    if cx.editor.mode == Mode::Select {
+        match cx.editor.evil_select_mode {
+            EvilSelectMode::LineWise => true,
+            EvilSelectMode::CharacterWise => false,
+        }
+    } else {
+        false
+    }
+}
+
+fn evil_transform_selection_linewise(cx: &mut Context) {
+    // LineWise Select
+    // ===============
+    // This function creates a selection with two overlapping ranges.
+    //
+    // It take the primary range and, assuming it is in the forward direction,
+    // moves its anchor to the start of the line. Then it creates a secondary
+    // selection from the end of the line to the the cursor. So the cursors of
+    // the two ranges are overlapping. To the user this should look like a
+    // single selection with the cursor somewhere in the middle of the last
+    // line, just like Vim does in linewise visual mode.
+    //
+    // Do not call `normalize` on the selection, as it would merge them.
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let range = doc.selection(view.id).clone().primary(); // TODO: handle more than 1 selection?
+
+    // Copy/paste from `extend_to_line_bounds`.
+    let (start_line, end_line) = range.line_range(text.slice(..));
+    let start = text.line_to_char(start_line);
+    let end = text.line_to_char((end_line + 1).min(text.len_lines()));
+
+    let selection = if range.direction() == Direction::Forward {
+        let primary = Range::new(start, range.head);
+        let secondary = Range::new(end, graphemes::prev_grapheme_boundary(text, range.head));
+        Selection::evil_new_no_normalize(smallvec![primary, secondary], 0)
+    } else {
+        let primary = Range::new(end, range.head);
+        let secondary = Range::new(start, graphemes::next_grapheme_boundary(text, range.head));
+        Selection::evil_new_no_normalize(
+            // Sorted by [Range::from]
+            smallvec![secondary, primary],
+            1,
+        )
+    };
+    doc.evil_set_selection_no_normalize(view.id, selection);
 }
 
 fn evil_append_mode(cx: &mut Context) {

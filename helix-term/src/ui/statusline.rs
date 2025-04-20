@@ -130,7 +130,7 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     match element_id {
-        helix_view::editor::StatusLineElement::Mode => render_mode,
+        helix_view::editor::StatusLineElement::Mode => evil_render_mode,
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
         helix_view::editor::StatusLineElement::FileBaseName => render_file_base_name,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
@@ -191,6 +191,29 @@ where
     write(context, Span::styled(content, style));
 }
 
+fn evil_render_mode<'a, F>(context: &mut RenderContext<'a>, write: F)
+where
+    F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
+{
+    render_mode(context, write);
+
+    let visible = context.focused;
+    let config = context.editor.config();
+    let content = format!("{} ", context.editor.evil_select_mode)
+        .trim_start()
+        .to_string();
+    let style = if config.color_modes {
+        context.editor.theme.get("ui.statusline.select")
+    } else {
+        Style::default()
+    };
+
+    if visible && context.editor.mode == Mode::Select {
+        write(context, Span::styled(content, style));
+    }
+}
+
+// TODO think about handling multiple language servers
 fn render_lsp_spinner<'a, F>(context: &mut RenderContext<'a>, write: F)
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
