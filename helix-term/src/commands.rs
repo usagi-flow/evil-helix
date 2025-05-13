@@ -682,6 +682,7 @@ impl MappableCommand {
         evil_till_prev_char, "Move till previous occurrence of char (evil)",
         evil_find_prev_char, "Move to previous occurrence of char (evil)",
         evil_append_mode, "Append after character",
+        evil_goto_line, "Goto line (evil)",
         evil_characterwise_select_mode, "Enter/exit characterwise select mode",
         evil_linewise_select_mode, "Enter/exit linewise select mode",
         command_palette, "Open command palette",
@@ -7630,4 +7631,15 @@ fn evil_transform_selection_linewise(cx: &mut Context) {
 fn evil_append_mode(cx: &mut Context) {
     append_mode_same_line(cx);
     collapse_selection(cx);
+}
+
+fn evil_goto_line(cx: &mut Context) {
+    if cx.count.is_some() {
+        let (view, doc) = current!(cx.editor);
+        push_jump(view, doc);
+
+        goto_line_without_jumplist(cx.editor, cx.count, Movement::Move);
+    } else {
+        goto_last_line(cx);
+    }
 }
