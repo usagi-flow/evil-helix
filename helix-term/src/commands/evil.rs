@@ -12,6 +12,10 @@ use helix_core::movement::{
 use helix_core::{doc_formatter::TextFormat, text_annotations::TextAnnotations, RopeSlice};
 use helix_core::{movement::move_next_word_end, Rope};
 use helix_core::{Range, Selection, Transaction};
+use helix_core::{
+    line_ending::rope_is_line_ending,
+    graphemes::prev_grapheme_boundary,
+};
 use helix_view::document::Mode;
 use helix_view::editor::EvilSelectMode;
 use helix_view::input::KeyEvent;
@@ -757,4 +761,104 @@ fn move_one_char(slice: RopeSlice, range: Range, direction: Direction) -> Range 
         &TextFormat::default(),          // Not used
         &mut TextAnnotations::default(), // Not used
     )
+}
+
+pub fn evil_movement_paragraph_backward(
+    slice: RopeSlice,
+    range: Range,
+    count: usize,
+    behavior: Movement,
+) -> Range {
+    //Mostly copy/past from Movements::move_prev_paragraph
+    let mut line = range.cursor_line(slice);
+    let first_char = slice.line_to_char(line) == range.cursor(slice);
+    let prev_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
+    let curr_line_empty = rope_is_line_ending(slice.line(line));
+    let prev_empty_to_line = prev_line_empty && !curr_line_empty;
+
+    // skip character before paragraph boundary
+    if prev_empty_to_line && !first_char {
+        line += 1;
+    }
+    let mut lines = slice.lines_at(line);
+    lines.reverse();
+    let mut lines = lines.map(rope_is_line_ending).peekable();
+    let mut last_line = line;
+    for _ in 0..count {
+        while lines.next_if(|&e| e).is_some() {
+            line -= 1;
+        }
+        while lines.next_if(|&e| !e).is_some() {
+            line -= 1;
+        }
+        if lines.next_if(|&e| e).is_some() {
+            line -= 1;
+        }
+        if line == last_line {
+            break;
+        }
+        last_line = line;
+    }
+
+    let head = slice.line_to_char(line);
+    let anchor = if behavior == Movement::Move {
+        // exclude first character after paragraph boundary
+        if prev_empty_to_line && first_char {
+            range.cursor(slice)
+        } else {
+            range.head
+        }
+    } else {
+        range.put_cursor(slice, head, true).anchor
+    };
+    Range::new(anchor, head)
+}
+
+pub fn evil_movement_paragraph_forward(
+    slice: RopeSlice,
+    range: Range,
+    count: usize,
+    behavior: Movement,
+) -> Range {
+    //Mostly copy/paste from Movements::move_next_paragraph
+    let mut line = range.cursor_line(slice);
+    let last_char =
+        prev_grapheme_boundary(slice, slice.line_to_char(line + 1)) == range.cursor(slice);
+    let curr_line_empty = rope_is_line_ending(slice.line(line));
+    let next_line_empty =
+        rope_is_line_ending(slice.line(slice.len_lines().saturating_sub(1).min(line + 1)));
+    let curr_empty_to_line = curr_line_empty && !next_line_empty;
+
+    // skip character after paragraph boundary
+    if curr_empty_to_line && last_char {
+        line += 1;
+    }
+    let mut lines = slice.lines_at(line).map(rope_is_line_ending).peekable();
+    let mut last_line = line;
+    for _ in 0..count {
+        while lines.next_if(|&e| e).is_some() {
+            line += 1;
+        }
+        while lines.next_if(|&e| !e).is_some() {
+            line += 1;
+        }
+        if lines.next_if(|&e| e).is_some() {
+            line += 1;
+        }
+        if line == last_line {
+            break;
+        }
+        last_line = line;
+    }
+    let head = slice.line_to_char(line);
+    let anchor = if behavior == Movement::Move {
+        if curr_empty_to_line && last_char {
+            range.head
+        } else {
+            range.cursor(slice)
+        }
+    } else {
+        range.put_cursor(slice, head, true).anchor
+    };
+    Range::new(anchor, head)
 }
