@@ -809,10 +809,12 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
 
         "C-w" | "A-backspace" => delete_word_backward,
         "A-d" | "A-del" => delete_word_forward,
+        "C-d" => unindent,
+        "C-t" => indent,
         "C-u" => kill_to_line_start,
         "C-k" => kill_to_line_end,
         "C-h" | "backspace" | "S-backspace" => delete_char_backward,
-        "C-d" | "del" => delete_char_forward,
+        "del" => delete_char_forward,
         "C-j" | "ret" => insert_newline,
         "tab" => smart_tab,
         "S-tab" => insert_tab,
