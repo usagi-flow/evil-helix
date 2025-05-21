@@ -507,7 +507,7 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
             "a" => select_textobject_around,
             "i" => select_textobject_inner,
         },
-        "%" => match_brackets,
+        "%" => evil_match_brackets,
         "[" => { "Left bracket"
             "d" => goto_prev_diag,
             "D" => goto_first_diag,
@@ -540,10 +540,10 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         "}" => evil_move_paragraph_forward,
         "{" => evil_move_paragraph_backward,
 
-        "/" => search,
-        "?" => rsearch,
-        "n" => search_next,
-        "N" => search_prev,
+        "/" => evil_search,
+        "?" => evil_rsearch,
+        "n" => evil_search_next,
+        "N" => evil_search_prev,
         "*" => search_selection,
 
         "u" => undo,

@@ -422,6 +422,10 @@ impl MappableCommand {
         rsearch, "Reverse search for regex pattern",
         search_next, "Select next search match",
         search_prev, "Select previous search match",
+        evil_search, "Search for regex pattern (evil)",
+        evil_rsearch, "Reverse search for regex pattern (evil)",
+        evil_search_next, "Select next search match (evil)",
+        evil_search_prev, "Select previous search match (evil)",
         extend_search_next, "Add next search match to selection",
         extend_search_prev, "Add previous search match to selection",
         search_selection, "Use current selection as search pattern",
@@ -592,6 +596,7 @@ impl MappableCommand {
         scroll_up, "Scroll view up",
         scroll_down, "Scroll view down",
         match_brackets, "Goto matching bracket",
+        evil_match_brackets, "Goto matching bracket (evil)",
         surround_add, "Surround add",
         surround_replace, "Surround replace",
         surround_delete, "Surround delete",
@@ -665,6 +670,17 @@ impl MappableCommand {
         goto_prev_tabstop, "goto next snippet placeholder",
     );
 }
+
+wrap_many_with_hooks!(
+    [
+        (evil_match_brackets, match_brackets),
+        (evil_search, search),
+        (evil_rsearch, rsearch),
+        (evil_search_next, search_next),
+        (evil_search_prev, search_prev)
+    ],
+    evil_save_to_jumplist
+);
 
 impl fmt::Debug for MappableCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1429,6 +1445,7 @@ fn goto_next_paragraph(cx: &mut Context) {
 }
 
 fn evil_move_paragraph_forward(cx: &mut Context) {
+    evil_save_to_jumplist(cx);
     goto_para_impl(cx, evil_movement_paragraph_forward);
     if cx.editor.mode != Mode::Select {
         EvilCommands::collapse_selections(cx, CollapseMode::ToHead);
@@ -1436,6 +1453,7 @@ fn evil_move_paragraph_forward(cx: &mut Context) {
 }
 
 fn evil_move_paragraph_backward(cx: &mut Context) {
+    evil_save_to_jumplist(cx);
     goto_para_impl(cx, evil_movement_paragraph_backward);
     if cx.editor.mode != Mode::Select {
         EvilCommands::collapse_selections(cx, CollapseMode::ToHead);
@@ -5572,6 +5590,11 @@ fn jump_backward(cx: &mut Context) {
     };
 }
 
+fn evil_save_to_jumplist(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    push_jump(view, doc);
+}
+
 fn save_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     push_jump(view, doc);
@@ -6943,4 +6966,3 @@ fn evil_goto_line(cx: &mut Context) {
         goto_last_line(cx);
     }
 }
-

@@ -25,6 +25,56 @@ use crate::commands::{enter_insert_mode, exit_select_mode, Context, Extend, Oper
 
 use super::OnKeyCallbackKind;
 
+macro_rules! wrap_hooks {
+    ($wrapper:ident, $func:path, $before:expr, $after:expr) => {
+        fn $wrapper(cx: &mut Context) {
+            if EvilCommands::is_enabled() {
+                $before(cx);
+            }
+
+            $func(cx);
+
+            if EvilCommands::is_enabled() {
+                $after(cx);
+            }
+        }
+    };
+
+    ($wrapper:ident, $func:path, $before:expr) => {
+        fn $wrapper(cx: &mut Context) {
+            if EvilCommands::is_enabled() {
+                $before(cx);
+            }
+
+            $func(cx);
+        }
+    };
+}
+
+macro_rules! wrap_many_with_hooks {
+    (
+        [ $( ( $wrapper:ident, $func:path ) ),+ $(,)? ],
+        $before:expr,
+        $after:expr
+    ) => {
+        $(
+            wrap_hooks!($wrapper, $func, $before, $after);
+        )+
+    };
+
+    (
+        [ $( ( $wrapper:ident, $func:path ) ),+ $(,)? ],
+        $before:expr
+    ) => {
+        $(
+            wrap_hooks!($wrapper, $func, $before);
+        )+
+    };
+}
+
+pub(crate) use wrap_hooks;
+pub(crate) use wrap_many_with_hooks;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Command {
     Yank,
