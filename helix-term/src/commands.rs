@@ -5867,7 +5867,9 @@ fn evil_cursor_backward_search(cx: &mut Context) {
 
 fn evil_cursor_search_impl(cx: &mut Context, direction: Direction) {
     fn find_keyword_char(slice: RopeSlice) -> Option<usize> {
-        slice.chars().position(|ch| ch.is_alphanumeric() || ch == '_')
+        slice
+            .chars()
+            .position(|ch| ch.is_alphanumeric() || ch == '_')
     }
     fn goto_next_keyword_char_in_line(view: &mut View, doc: &mut Document) {
         let text = doc.text().slice(..);
@@ -5881,7 +5883,7 @@ fn evil_cursor_search_impl(cx: &mut Context, direction: Direction) {
 
             let anchor = range.cursor(text);
             let search_limit = (pos_end + 1).min(text.len_chars());
-            if let Some(pos) = find_keyword_char(text.slice(anchor..search_limit)){
+            if let Some(pos) = find_keyword_char(text.slice(anchor..search_limit)) {
                 range.put_cursor(text, anchor + pos, false)
             } else {
                 range.put_cursor(text, anchor, false)
@@ -5907,9 +5909,9 @@ fn evil_cursor_search_impl(cx: &mut Context, direction: Direction) {
 
     // Use Helix 'word' as a Vim 'keyword' equivalent
     let objtype = textobject::TextObject::Inside;
-    let selection = selection.clone().transform(|range| {
-        textobject::textobject_word(text, range, objtype, count, false)
-    });
+    let selection = selection
+        .clone()
+        .transform(|range| textobject::textobject_word(text, range, objtype, count, false));
     doc.set_selection(view.id, selection);
     search_selection_detect_word_boundaries(cx);
 
@@ -5927,7 +5929,8 @@ fn evil_cursor_search_impl(cx: &mut Context, direction: Direction) {
             cx.editor.set_status(msg)
         }
         Err(err) => {
-            cx.editor.set_error(format!("Failed to update register: {}", err));
+            cx.editor
+                .set_error(format!("Failed to update register: {}", err));
             return;
         }
     }
@@ -7022,4 +7025,3 @@ fn evil_goto_line(cx: &mut Context) {
         goto_last_line(cx);
     }
 }
-
