@@ -5915,7 +5915,8 @@ fn evil_cursor_search_impl(cx: &mut Context, direction: Direction) {
     doc.set_selection(view.id, selection);
     search_selection_detect_word_boundaries(cx);
 
-    // Vim */# search is case insensitive, thus prepending (?i) to regex
+    // Make the search case insensitive by prepending (?i) to the regex
+    // TODO: consider supporting case sensitive searching depending on search.smart-case
     let register = cx.register.unwrap_or('/');
     let regex = match cx.editor.registers.first(register, cx.editor) {
         Some(regex) => format!("(?i){}", regex),
