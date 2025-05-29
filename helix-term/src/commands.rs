@@ -682,6 +682,8 @@ impl MappableCommand {
         evil_till_prev_char, "Move till previous occurrence of char (evil)",
         evil_find_prev_char, "Move to previous occurrence of char (evil)",
         evil_append_mode, "Append after character",
+        evil_cursor_forward_search, "Search forward for the word near cursor (evil)",
+        evil_cursor_backward_search, "Search backward for the word near cursor (evil)",
         evil_goto_line, "Goto line (evil)",
         evil_characterwise_select_mode, "Enter/exit characterwise select mode",
         evil_linewise_select_mode, "Enter/exit linewise select mode",
@@ -6499,6 +6501,87 @@ fn select_textobject_around(cx: &mut Context) {
 
 fn select_textobject_inner(cx: &mut Context) {
     select_textobject(cx, textobject::TextObject::Inside);
+}
+
+fn evil_cursor_forward_search(cx: &mut Context) {
+    evil_cursor_search_impl(cx, Direction::Forward);
+}
+
+fn evil_cursor_backward_search(cx: &mut Context) {
+    evil_cursor_search_impl(cx, Direction::Backward);
+}
+
+fn evil_cursor_search_impl(cx: &mut Context, direction: Direction) {
+    fn find_keyword_char(slice: RopeSlice) -> Option<usize> {
+        slice
+            .chars()
+            .position(|ch| ch.is_alphanumeric() || ch == '_')
+    }
+    fn goto_next_keyword_char_in_line(view: &mut View, doc: &mut Document) {
+        let text = doc.text().slice(..);
+
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            let line = range.cursor_line(text);
+            let line_start = text.line_to_char(line);
+
+            let pos_end = graphemes::prev_grapheme_boundary(text, line_end_char_index(&text, line))
+                .max(line_start);
+
+            let anchor = range.cursor(text);
+            let search_limit = (pos_end + 1).min(text.len_chars());
+            if let Some(pos) = find_keyword_char(text.slice(anchor..search_limit)) {
+                range.put_cursor(text, anchor + pos, false)
+            } else {
+                range.put_cursor(text, anchor, false)
+            }
+        });
+        doc.set_selection(view.id, selection);
+    }
+
+    exit_select_mode(cx);
+    keep_primary_selection(cx);
+
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    goto_next_keyword_char_in_line(view, doc);
+
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id);
+
+    if selection.primary().fragment(text).trim().is_empty() {
+        cx.editor.set_error("No string under cursor");
+        return;
+    }
+
+    // Use Helix 'word' as a Vim 'keyword' equivalent
+    let objtype = textobject::TextObject::Inside;
+    let selection = selection
+        .clone()
+        .transform(|range| textobject::textobject_word(text, range, objtype, count, false));
+    doc.set_selection(view.id, selection);
+    search_selection_detect_word_boundaries(cx);
+
+    // Make the search case insensitive by prepending (?i) to the regex
+    // TODO: consider supporting case sensitive searching depending on search.smart-case
+    let register = cx.register.unwrap_or('/');
+    let regex = match cx.editor.registers.first(register, cx.editor) {
+        Some(regex) => format!("(?i){}", regex),
+        None => return,
+    };
+
+    let msg = format!("register '{}' set to '{}'", register, &regex);
+    match cx.editor.registers.push(register, regex) {
+        Ok(_) => {
+            cx.editor.registers.last_search_register = register;
+            cx.editor.set_status(msg)
+        }
+        Err(err) => {
+            cx.editor
+                .set_error(format!("Failed to update register: {}", err));
+            return;
+        }
+    }
+    search_next_or_prev_impl(cx, Movement::Move, direction);
 }
 
 fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {

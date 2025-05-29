@@ -552,7 +552,10 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         "?" => rsearch,
         "n" => search_next,
         "N" => search_prev,
-        "*" => search_selection,
+        //"*" => search_selection,
+
+        "*" => evil_cursor_forward_search,
+        "#" => evil_cursor_backward_search,
 
         "u" => undo,
         "U" => redo,
