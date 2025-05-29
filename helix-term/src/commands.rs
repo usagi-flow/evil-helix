@@ -644,6 +644,8 @@ impl MappableCommand {
         evil_prev_long_word_start, "Previous long word start (evil)",
         evil_next_long_word_start, "Next long word start (evil)",
         evil_next_long_word_end, "Next long word end (evil)",
+        evil_move_paragraph_forward, "Move forward by a paragraph (evil)",
+        evil_move_paragraph_backward, "Move backward by a paragraph (evil)",
         evil_delete, "Delete (evil)",
         evil_delete_immediate, "Delete immediately (evil)",
         evil_yank, "Yank (evil)",
@@ -655,6 +657,7 @@ impl MappableCommand {
         evil_append_mode, "Append after character",
         evil_cursor_forward_search, "Search forward for the word near cursor (evil)",
         evil_cursor_backward_search, "Search backward for the word near cursor (evil)",
+        evil_goto_line, "Goto line (evil)",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
@@ -1425,6 +1428,20 @@ fn goto_prev_paragraph(cx: &mut Context) {
 
 fn goto_next_paragraph(cx: &mut Context) {
     goto_para_impl(cx, movement::move_next_paragraph)
+}
+
+fn evil_move_paragraph_forward(cx: &mut Context) {
+    goto_para_impl(cx, evil_movement_paragraph_forward);
+    if cx.editor.mode != Mode::Select {
+        EvilCommands::collapse_selections(cx, CollapseMode::ToHead);
+    }
+}
+
+fn evil_move_paragraph_backward(cx: &mut Context) {
+    goto_para_impl(cx, evil_movement_paragraph_backward);
+    if cx.editor.mode != Mode::Select {
+        EvilCommands::collapse_selections(cx, CollapseMode::ToHead);
+    }
 }
 
 fn goto_file_start(cx: &mut Context) {
@@ -6994,3 +7011,15 @@ fn evil_append_mode(cx: &mut Context) {
     append_mode_same_line(cx);
     collapse_selection(cx);
 }
+
+fn evil_goto_line(cx: &mut Context) {
+    if cx.count.is_some() {
+        let (view, doc) = current!(cx.editor);
+        push_jump(view, doc);
+
+        goto_line_without_jumplist(cx.editor, cx.count);
+    } else {
+        goto_last_line(cx);
+    }
+}
+

@@ -537,6 +537,9 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
             "space" => add_newline_below,
         },
 
+        "}" => evil_move_paragraph_forward,
+        "{" => evil_move_paragraph_backward,
+
         "/" => search,
         "?" => rsearch,
         "n" => search_next,
@@ -751,7 +754,7 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         "0" => goto_line_start,
         "$" => goto_line_end,
         "^" => goto_first_nonwhitespace,
-        "G" => goto_last_line,
+        "G" => evil_goto_line,
         "del" => delete_selection,
     });
     let mut select = normal.clone();
@@ -801,10 +804,12 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
 
         "C-w" | "A-backspace" => delete_word_backward,
         "A-d" | "A-del" => delete_word_forward,
+        "C-d" => unindent,
+        "C-t" => indent,
         "C-u" => kill_to_line_start,
         "C-k" => kill_to_line_end,
         "C-h" | "backspace" | "S-backspace" => delete_char_backward,
-        "C-d" | "del" => delete_char_forward,
+        "del" => delete_char_forward,
         "C-j" | "ret" => insert_newline,
         "tab" => smart_tab,
         "S-tab" => insert_tab,
