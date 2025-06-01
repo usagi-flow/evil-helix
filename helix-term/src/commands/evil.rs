@@ -21,7 +21,7 @@ use helix_view::editor::EvilSelectMode;
 use helix_view::input::KeyEvent;
 use once_cell::sync::Lazy;
 
-use crate::commands::{enter_insert_mode, exit_select_mode, Context, Extend, Operation};
+use crate::commands::{enter_insert_mode, exit_select_mode, Context, Extend, Operation, evil_avoid_last_line};
 
 use super::OnKeyCallbackKind;
 
@@ -591,6 +591,8 @@ impl EvilCommands {
                 Self::context_mut().reset();
             }
         }
+
+        evil_avoid_last_line(cx);
     }
 
     fn evil_command_key_callback(cx: &mut Context, e: KeyEvent) {
