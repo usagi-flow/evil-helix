@@ -141,6 +141,10 @@ jobs:
           path: "dist/"
       - uses: actions/download-artifact@v4
         with:
+          name: "evil-helix-amd64-linux-musl"
+          path: "dist/"
+      - uses: actions/download-artifact@v4
+        with:
           name: "evil-helix-aarch64-linux"
           path: "dist/"
       - uses: actions/download-artifact@v4
