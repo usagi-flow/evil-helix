@@ -481,6 +481,7 @@ impl MappableCommand {
         goto_window_top, "Goto window top",
         goto_window_center, "Goto window center",
         goto_window_bottom, "Goto window bottom",
+        evil_goto_last_accessed_file, "Goto last accessed file (evil)",
         goto_last_accessed_file, "Goto last accessed file",
         goto_last_modified_file, "Goto last modified file",
         goto_last_modification, "Goto last modification",
@@ -3889,6 +3890,25 @@ fn goto_last_accessed_file(cx: &mut Context) {
         cx.editor.switch(alt, Action::Replace);
     } else {
         cx.editor.set_error("no last accessed buffer")
+    }
+}
+
+fn evil_goto_last_accessed_file(cx: &mut Context) {
+    if let Some(count) = cx.count {
+        let editor = &mut cx.editor;
+
+        let id = editor
+            .documents
+            .keys()
+            .find(|id| id.to_string().parse::<NonZeroUsize>().ok() == Some(count));
+
+        if let Some(&id) = id {
+            editor.switch(id, Action::Replace);
+        } else {
+            editor.set_error(format!("Buffer {} not found", count));
+        }
+    } else {
+        goto_last_accessed_file(cx);
     }
 }
 

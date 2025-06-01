@@ -433,6 +433,8 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         //"B" => move_prev_long_word_start,
         //"E" => move_next_long_word_end,
 
+        "C-6" => evil_goto_last_accessed_file,
+        "C-^" => evil_goto_last_accessed_file,
         "v" => evil_characterwise_select_mode,
         "V" => evil_linewise_select_mode,
         // TODO (redundant with count + gg anyway?): "G" => goto_line,
