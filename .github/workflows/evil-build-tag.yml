@@ -105,11 +105,6 @@ jobs:
           fi
           rm -rf runtime/grammars/sources
           mv -v runtime dist/helix/
-          #cd dist
-
-          #if [[ "$RUNNER_OS" != "Windows" ]]; then
-          #  tar -cvzf "evil-helix-${{ matrix.target.name }}.tar.gz" helix
-          #fi
 
       - name: "Compress dist (tar)"
         shell: bash
