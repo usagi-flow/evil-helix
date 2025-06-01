@@ -30,6 +30,10 @@ jobs:
             name: amd64-linux
             native: true
             os: ubuntu-latest
+          - id: x86_64-unknown-linux-musl
+            name: amd64-linux-musl
+            native: false
+            os: ubuntu-latest
           - id: aarch64-unknown-linux-gnu
             name: aarch64-linux
             native: false
