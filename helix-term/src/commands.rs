@@ -5508,6 +5508,7 @@ fn select_all_children(cx: &mut Context) {
 }
 
 fn match_brackets(cx: &mut Context) {
+    save_selection(cx);
     let (view, doc) = current!(cx.editor);
     let is_select = cx.editor.mode == Mode::Select;
     let text = doc.text();
