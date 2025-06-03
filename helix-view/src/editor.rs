@@ -362,6 +362,8 @@ pub struct Config {
     pub end_of_line_diagnostics: DiagnosticFilter,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
+    /// Mode to use for new documents
+    pub initial_mode: Mode,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1058,6 +1060,7 @@ impl Default for Config {
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
+            initial_mode: Mode::Normal,
         }
     }
 }
@@ -1679,6 +1682,7 @@ impl Editor {
 
         if !matches!(action, Action::Load) {
             self.enter_normal_mode();
+            self.mode = self.config().initial_mode;
         }
 
         let focust_lost = match action {
