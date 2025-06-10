@@ -10,12 +10,9 @@ use helix_core::movement::{
     WordMotionTarget::{EvilNextLongWordStart, EvilNextWordStart},
 };
 use helix_core::{doc_formatter::TextFormat, text_annotations::TextAnnotations, RopeSlice};
+use helix_core::{graphemes::prev_grapheme_boundary, line_ending::rope_is_line_ending};
 use helix_core::{movement::move_next_word_end, Rope};
 use helix_core::{Range, Selection, Transaction};
-use helix_core::{
-    line_ending::rope_is_line_ending,
-    graphemes::prev_grapheme_boundary,
-};
 use helix_view::document::Mode;
 use helix_view::editor::EvilSelectMode;
 use helix_view::input::KeyEvent;
@@ -53,7 +50,8 @@ impl TryFrom<char> for Command {
 
 #[derive(Eq, PartialEq)]
 enum Modifier {
-    InnerWord,
+    Inside,
+    Around,
 }
 
 impl TryFrom<char> for Modifier {
@@ -62,12 +60,47 @@ impl TryFrom<char> for Modifier {
     fn try_from(value: char) -> Result<Self, Self::Error> {
         match value {
             // :h object-select
-            'i' => Ok(Self::InnerWord),
+            'i' => Ok(Self::Inside),
+            'a' => Ok(Self::Around),
             _ => Err(()),
         }
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
+enum TextObject {
+    // :h object-select
+    Paragraph,
+    Word,
+    // TODO: Sentence,
+    SquareBrackets,
+    RoundBrackets,
+    CurlyBrackets,
+    AngleBrackets,
+    // TODO: SquareRoundBlock,
+    // TODO: SquareCurlyBlock,
+    // TODO: Tags,
+}
+
+impl TryFrom<char> for TextObject {
+    type Error = ();
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
+        match value {
+            'p' => Ok(Self::Paragraph),
+            'w' => Ok(Self::Word),
+            // TODO: 's' => Ok(Self::Sentence),
+            '[' | ']' => Ok(Self::SquareBrackets),
+            '(' | ')' => Ok(Self::RoundBrackets),
+            '{' | '}' => Ok(Self::CurlyBrackets),
+            '<' | '>' => Ok(Self::AngleBrackets),
+            // TODO: 'b' => Ok(Self::SquareRoundBlock),
+            // TODO: 'B' => Ok(Self::SquareCurlyBlock),
+            // TODO: 't' => Ok(Self::Tags),
+            _ => Err(()),
+        }
+    }
+}
 #[derive(Debug, Eq, PartialEq)]
 enum Motion {
     PrevWordStart,
@@ -104,18 +137,20 @@ pub enum CollapseMode {
 
 struct EvilContext {
     command: Option<Command>,
+    modifier: Option<Modifier>,
     motion: Option<Motion>,
+    text_object: Option<TextObject>,
     count: Option<usize>,
-    modifiers: Vec<Modifier>,
     set_mode: Option<SetMode>,
 }
 
 impl EvilContext {
     pub fn reset(&mut self) {
         self.command = None;
+        self.modifier = None;
         self.motion = None;
+        self.text_object = None;
         self.count = None;
-        self.modifiers.clear();
         self.set_mode = None;
     }
 }
@@ -123,9 +158,10 @@ impl EvilContext {
 static CONTEXT: Lazy<RwLock<EvilContext>> = Lazy::new(|| {
     RwLock::new(EvilContext {
         command: None,
+        modifier: None,
         motion: None,
+        text_object: None,
         count: None,
-        modifiers: Vec::new(),
         set_mode: None,
     })
 });
@@ -213,25 +249,38 @@ impl EvilCommands {
                 // TODO: recognize motion keys like w and b
                 // TODO: see https://github.com/helix-editor/helix/blob/823eaad1a118e8865a6400afc22d37e060783d45/helix-term/src/ui/editor.rs#L1331-L1372
 
-                let has_inner_word_modifier =
-                    Self::context().modifiers.contains(&Modifier::InnerWord);
+                // let is_inside_or_around = Self::context()
+                //     .modifier
+                //     .as_ref()
+                //     .is_some_and(|m| m == &Modifier::Inside || m == &Modifier::Around);
 
-                if let Some(motion) = Self::context().motion.as_ref() {
+                if let Some(text_object) = Self::context().text_object.as_ref() {
+                    // A text object was specified (following an "inside"/"around" modifier)
+                    selection = match text_object {
+                        TextObject::Paragraph => {
+                            Self::get_bidirectional_word_based_selection(cx).ok()
+                        } // TODO
+                        TextObject::Word => Self::get_bidirectional_word_based_selection(cx).ok(),
+                        TextObject::SquareBrackets => {
+                            Self::get_bidirectional_word_based_selection(cx).ok()
+                        } // TODO
+                        TextObject::RoundBrackets => {
+                            Self::get_bidirectional_word_based_selection(cx).ok()
+                        } // TODO
+                        TextObject::CurlyBrackets => {
+                            Self::get_bidirectional_word_based_selection(cx).ok()
+                        } // TODO
+                        TextObject::AngleBrackets => {
+                            Self::get_bidirectional_word_based_selection(cx).ok()
+                        } // TODO
+                    };
+                } else if let Some(motion) = Self::context().motion.as_ref() {
                     log::trace!("Calculating selection using motion: {:?}", motion);
                     // A motion was specified: Select accordingly
                     // TODO: handle other motion keys as well
                     selection = match motion {
-                        Motion::PrevWordStart | Motion::NextWordEnd if has_inner_word_modifier => {
-                            Self::get_bidirectional_word_based_selection(cx).ok()
-                        }
                         Motion::PrevWordStart | Motion::NextWordEnd => {
                             Self::get_word_based_selection(cx, motion).ok()
-                        }
-                        Motion::PrevLongWordStart | Motion::NextLongWordEnd
-                            if has_inner_word_modifier =>
-                        {
-                            // TODO: this doesn't support long words yet
-                            Self::get_bidirectional_word_based_selection(cx).ok()
                         }
                         Motion::PrevLongWordStart | Motion::NextLongWordEnd => {
                             // TODO: this doesn't support long words yet
@@ -242,20 +291,17 @@ impl EvilCommands {
                         }
                     };
                 } else {
-                    // The inner word modifier isn't valid for a line-based selection
-                    if !has_inner_word_modifier {
-                        // No motion was specified: Perform a line-based selection
-                        log::trace!("No motion was specified: Perform a line-based selection");
+                    // No modifier/text object or motion was specified: Perform a line-based selection
+                    log::trace!("No motion was specified: Perform a line-based selection");
 
-                        // If the command is a change command, do not include the final line break,
-                        // to ensure an empty line is left in place.
-                        selection = Some(Self::get_full_line_based_selection(
-                            cx,
-                            !Self::context()
-                                .command
-                                .is_some_and(|command| command == Command::Change),
-                        ));
-                    }
+                    // If the command is a change command, do not include the final line break,
+                    // to ensure an empty line is left in place.
+                    selection = Some(Self::get_full_line_based_selection(
+                        cx,
+                        !Self::context()
+                            .command
+                            .is_some_and(|command| command == Command::Change),
+                    ));
                 }
             }
             helix_view::document::Mode::Select => {
@@ -652,33 +698,46 @@ impl EvilCommands {
         }
 
         if let Some(c) = e.char() {
-            // Is the command receiving a modifier?
-            if let Some(modifier) = Modifier::try_from(c).ok() {
-                log::trace!("Key callback: Detected modifier key '{}'", c);
+            // Do we have an inside/outside modifier?
+            // Then we expect a text object and execute the command.
+            // If we don't get a text object, interrupt command.
+            if Self::context().modifier.is_some() {
+                if let Some(text_object) = TextObject::try_from(c).ok() {
+                    log::trace!("Key callback: Detected text object key '{}'", c);
 
-                Self::context_mut().modifiers.push(modifier);
+                    Self::context_mut().text_object = Some(text_object);
+                    Self::evil_command(cx, active_command, set_mode);
+                    return;
+                }
+            } else {
+                // Is the command receiving a modifier?
+                if let Some(modifier) = Modifier::try_from(c).ok() {
+                    log::trace!("Key callback: Detected modifier key '{}'", c);
 
-                // TODO: cx.on_next_key()
-                cx.on_next_key_callback = Some((
-                    Box::new(move |cx: &mut Context, e: KeyEvent| {
-                        Self::evil_command_key_callback(cx, e);
-                    }),
-                    OnKeyCallbackKind::PseudoPending,
-                ));
+                    Self::context_mut().modifier = Some(modifier);
 
-                return;
-            }
+                    // TODO: cx.on_next_key()
+                    cx.on_next_key_callback = Some((
+                        Box::new(move |cx: &mut Context, e: KeyEvent| {
+                            Self::evil_command_key_callback(cx, e);
+                        }),
+                        OnKeyCallbackKind::PseudoPending,
+                    ));
 
-            // Is the command being executed with a motion key?
-            // Check this after the count check, because "0" could imply increasing the count,
-            // and if it doesn't, it's probably a motion key.
-            if let Some(motion) = e.char().and_then(|c| Motion::try_from(c).ok()) {
-                log::trace!("Key callback: Detected motion key '{}'", c);
+                    return;
+                }
 
-                Self::context_mut().motion = Some(motion);
-                // TODO; a motion key should immediately execute the command
-                Self::evil_command(cx, active_command, set_mode);
-                return;
+                // Is the command being executed with a motion key?
+                // Check this after the count check, because "0" could imply increasing the count,
+                // and if it doesn't, it's probably a motion key.
+                if let Some(motion) = e.char().and_then(|c| Motion::try_from(c).ok()) {
+                    log::trace!("Key callback: Detected motion key '{}'", c);
+
+                    Self::context_mut().motion = Some(motion);
+                    // TODO; a motion key should immediately execute the command
+                    Self::evil_command(cx, active_command, set_mode);
+                    return;
+                }
             }
         }
 
