@@ -3,7 +3,6 @@ use std::{
     sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use helix_core::movement::move_prev_word_start;
 use helix_core::movement::{is_word_boundary, Direction};
 use helix_core::movement::{
     move_horizontally, word_move, Movement,
@@ -12,6 +11,7 @@ use helix_core::movement::{
 use helix_core::{doc_formatter::TextFormat, text_annotations::TextAnnotations, RopeSlice};
 use helix_core::{graphemes::prev_grapheme_boundary, line_ending::rope_is_line_ending};
 use helix_core::{movement::move_next_word_end, Rope};
+use helix_core::{movement::move_prev_word_start, textobject};
 use helix_core::{Range, Selection, Transaction};
 use helix_view::document::Mode;
 use helix_view::editor::EvilSelectMode;
@@ -48,7 +48,7 @@ impl TryFrom<char> for Command {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 enum Modifier {
     Inside,
     Around,
@@ -261,18 +261,10 @@ impl EvilCommands {
                             Self::get_bidirectional_word_based_selection(cx).ok()
                         } // TODO
                         TextObject::Word => Self::get_bidirectional_word_based_selection(cx).ok(),
-                        TextObject::SquareBrackets => {
-                            Self::get_bidirectional_word_based_selection(cx).ok()
-                        } // TODO
-                        TextObject::RoundBrackets => {
-                            Self::get_bidirectional_word_based_selection(cx).ok()
-                        } // TODO
-                        TextObject::CurlyBrackets => {
-                            Self::get_bidirectional_word_based_selection(cx).ok()
-                        } // TODO
-                        TextObject::AngleBrackets => {
-                            Self::get_bidirectional_word_based_selection(cx).ok()
-                        } // TODO
+                        TextObject::SquareBrackets => Self::get_surrounding_char_selection(cx, '['),
+                        TextObject::RoundBrackets => Self::get_surrounding_char_selection(cx, '('),
+                        TextObject::CurlyBrackets => Self::get_surrounding_char_selection(cx, '{'),
+                        TextObject::AngleBrackets => Self::get_surrounding_char_selection(cx, '<'),
                     };
                 } else if let Some(motion) = Self::context().motion.as_ref() {
                     log::trace!("Calculating selection using motion: {:?}", motion);
@@ -438,6 +430,44 @@ impl EvilCommands {
         } else {
             return Err(error.unwrap());
         }
+    }
+
+    fn get_surrounding_char_selection(
+        cx: &mut Context,
+        surrounding_char: char,
+    ) -> Option<Selection> {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+
+        // TODO: implement TryInto instead
+        let ts_modifier = match Self::context().modifier.as_ref() {
+            Some(m) if m == &Modifier::Inside => textobject::TextObject::Inside,
+            Some(m) if m == &Modifier::Around => textobject::TextObject::Around,
+            Some(m) => {
+                log::error!(
+                    "Got an evil text object with an unexpected evil modifier: {:?}",
+                    m
+                );
+                return None;
+            }
+            None => {
+                log::error!("Got an evil text object but no evil modifier");
+                return None;
+            }
+        };
+
+        // See also: select_textobject() in commands.rs
+
+        return Some(doc.selection(view.id).clone().transform(|range| {
+            return textobject::textobject_pair_surround(
+                doc.syntax(),
+                text,
+                range,
+                ts_modifier,
+                surrounding_char,
+                Self::context().count.unwrap_or(1),
+            );
+        }));
     }
 
     fn get_partial_line_based_selection(
