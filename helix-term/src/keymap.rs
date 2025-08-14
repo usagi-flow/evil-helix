@@ -1,4 +1,5 @@
 pub mod default;
+pub mod default_evil;
 pub mod macros;
 
 pub use crate::commands::MappableCommand;
@@ -20,7 +21,7 @@ use std::{
 };
 
 pub use default::default;
-pub use default::default_evil;
+pub use default_evil::default_evil;
 use macros::key;
 
 #[derive(Debug, Clone, Default), Deserialize]
