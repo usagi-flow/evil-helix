@@ -1,0 +1,21 @@
+[project]
+name = "evil-tests"
+version = "0.1.0"
+description = "End-to-end tests of evil-helix"
+requires-python = ">=3.13"
+dependencies = [
+    "pexpect>=4.9.0",
+]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"
+docstring-code-format = true
+line-ending = "lf"
