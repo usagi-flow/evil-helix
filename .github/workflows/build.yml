@@ -1,5 +1,5 @@
 name: Build
-on:
+#on:
   # pull_request:
   # push:
   #   branches:
