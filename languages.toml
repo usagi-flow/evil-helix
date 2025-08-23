@@ -1,7 +1,8 @@
 # Language support configuration.
 # See the languages documentation: https://docs.helix-editor.com/master/languages.html
 
-use-grammars = { except = [ "wren", "gemini" ] }
+# TODO: evil-helix currently can't fetch 07035a24 for hare
+use-grammars = { except = [ "wren", "gemini", "hare" ] }
 
 [language-server]
 
