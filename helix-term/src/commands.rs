@@ -671,7 +671,8 @@ impl MappableCommand {
         evil_append_mode, "Append after character",
         evil_cursor_forward_search, "Search forward for the word near cursor (evil)",
         evil_cursor_backward_search, "Search backward for the word near cursor (evil)",
-        evil_goto_line, "Goto line (evil)",
+        evil_goto_line_or_first_line, "Goto first line (evil)",
+        evil_goto_line_or_last_line, "Goto last line (evil)",
         evil_characterwise_select_mode, "Enter/exit characterwise select mode",
         evil_linewise_select_mode, "Enter/exit linewise select mode",
         command_palette, "Open command palette",
@@ -7228,6 +7229,8 @@ fn evil_find_prev_char(cx: &mut Context) {
 }
 
 fn evil_characterwise_select_mode(cx: &mut Context) {
+    // TODO: move implementation to evil.rs
+
     fn switch_to_characterwise(cx: &mut Context) {
         cx.editor.evil_select_mode = EvilSelectMode::CharacterWise;
     }
@@ -7244,6 +7247,8 @@ fn evil_characterwise_select_mode(cx: &mut Context) {
 }
 
 fn evil_linewise_select_mode(cx: &mut Context) {
+    // TODO: move implementation to evil.rs
+
     fn switch_to_linewise(cx: &mut Context) {
         cx.editor.evil_select_mode = EvilSelectMode::LineWise;
     }
@@ -7260,6 +7265,8 @@ fn evil_linewise_select_mode(cx: &mut Context) {
 }
 
 fn evil_is_select_mode_linewise(cx: &Context) -> bool {
+    // TODO: move implementation to evil.rs
+
     if cx.editor.mode == Mode::Select {
         match cx.editor.evil_select_mode {
             EvilSelectMode::LineWise => true,
@@ -7271,6 +7278,8 @@ fn evil_is_select_mode_linewise(cx: &Context) -> bool {
 }
 
 fn evil_transform_selection_linewise(cx: &mut Context) {
+    // TODO: move implementation to evil.rs
+
     // LineWise Select
     // ===============
     // This function creates a selection with two overlapping ranges.
@@ -7309,17 +7318,40 @@ fn evil_transform_selection_linewise(cx: &mut Context) {
 }
 
 fn evil_append_mode(cx: &mut Context) {
+    // TODO: move implementation to evil.rs
+
     append_mode_same_line(cx);
     collapse_selection(cx);
 }
 
-fn evil_goto_line(cx: &mut Context) {
+fn evil_goto_line_or_first_line(cx: &mut Context) {
+    // TODO: move implementation to evil.rs
+
+    // TODO: this also moves the selection to the first position on the first line
+    goto_file_start_impl(
+        cx,
+        match cx.editor.mode {
+            Mode::Select => Movement::Extend,
+            _ => Movement::Move,
+        },
+    );
+}
+
+fn evil_goto_line_or_last_line(cx: &mut Context) {
+    // TODO: move implementation to evil.rs
+
     if cx.count.is_some() {
         let (view, doc) = current!(cx.editor);
         push_jump(view, doc);
 
         goto_line_without_jumplist(cx.editor, cx.count, Movement::Move);
     } else {
-        goto_last_line(cx);
+        goto_last_line_impl(
+            cx,
+            match cx.editor.mode {
+                Mode::Select => Movement::Extend,
+                _ => Movement::Move,
+            },
+        );
     }
 }
