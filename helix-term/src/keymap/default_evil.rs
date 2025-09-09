@@ -38,7 +38,7 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         "V" => evil_linewise_select_mode,
         // TODO (redundant with count + gg anyway?): "G" => goto_line,
         "g" => { "Goto"
-            "g" => goto_file_start,
+            "g" => evil_goto_line_or_first_line,
             "|" => goto_column,
             "e" => goto_last_line,
             "f" => goto_file,
@@ -358,7 +358,7 @@ pub fn default_evil() -> HashMap<Mode, KeyTrie> {
         "0" => goto_line_start,
         "$" => goto_line_end,
         "^" => goto_first_nonwhitespace,
-        "G" => evil_goto_line,
+        "G" => evil_goto_line_or_last_line,
         "del" => delete_selection,
     });
     let mut select = normal.clone();
