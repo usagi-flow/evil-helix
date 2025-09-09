@@ -72,14 +72,17 @@ enum TextObject {
     // :h object-select
     Paragraph,
     Word,
-    // TODO: Sentence,
+    Sentence,
     SquareBrackets,
     RoundBrackets,
     CurlyBrackets,
     AngleBrackets,
-    // TODO: SquareRoundBlock,
-    // TODO: SquareCurlyBlock,
-    // TODO: Tags,
+    SingleQuotes,
+    DoubleQuotes,
+    Backticks,
+    SquareRoundBlock,
+    SquareCurlyBlock,
+    Tags,
 }
 
 impl TryFrom<char> for TextObject {
@@ -94,9 +97,13 @@ impl TryFrom<char> for TextObject {
             '(' | ')' => Ok(Self::RoundBrackets),
             '{' | '}' => Ok(Self::CurlyBrackets),
             '<' | '>' => Ok(Self::AngleBrackets),
+            '\'' => Ok(Self::SingleQuotes),
+            '"' => Ok(Self::DoubleQuotes),
+            '`' => Ok(Self::Backticks),
             // TODO: 'b' => Ok(Self::SquareRoundBlock),
             // TODO: 'B' => Ok(Self::SquareCurlyBlock),
             // TODO: 't' => Ok(Self::Tags),
+            't' => Ok(Self::Tags),
             _ => Err(()),
         }
     }
@@ -257,14 +264,19 @@ impl EvilCommands {
                 if let Some(text_object) = Self::context().text_object.as_ref() {
                     // A text object was specified (following an "inside"/"around" modifier)
                     selection = match text_object {
-                        TextObject::Paragraph => {
-                            Self::get_bidirectional_word_based_selection(cx).ok()
-                        } // TODO
+                        TextObject::Paragraph => Self::get_paragraph_selection(cx),
                         TextObject::Word => Self::get_bidirectional_word_based_selection(cx).ok(),
                         TextObject::SquareBrackets => Self::get_surrounding_char_selection(cx, '['),
                         TextObject::RoundBrackets => Self::get_surrounding_char_selection(cx, '('),
                         TextObject::CurlyBrackets => Self::get_surrounding_char_selection(cx, '{'),
                         TextObject::AngleBrackets => Self::get_surrounding_char_selection(cx, '<'),
+                        TextObject::Sentence => todo!(),
+                        TextObject::SingleQuotes => Self::get_surrounding_char_selection(cx, '\''),
+                        TextObject::DoubleQuotes => Self::get_surrounding_char_selection(cx, '"'),
+                        TextObject::Backticks => Self::get_surrounding_char_selection(cx, '`'),
+                        TextObject::SquareRoundBlock => todo!(),
+                        TextObject::SquareCurlyBlock => todo!(),
+                        TextObject::Tags => Self::get_treesitter_object_selection(cx, "tag_name"), // TextObject::Tags => todo!(),
                     };
                 } else if let Some(motion) = Self::context().motion.as_ref() {
                     log::trace!("Calculating selection using motion: {:?}", motion);
@@ -545,6 +557,86 @@ impl EvilCommands {
 
             Range::new(anchor, head)
         });
+    }
+
+    fn get_paragraph_selection(cx: &mut Context) -> Option<Selection> {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+
+        // TODO: implement TryInto instead
+        let ts_modifier = match Self::context().modifier.as_ref() {
+            Some(m) if m == &Modifier::Inside => textobject::TextObject::Inside,
+            Some(m) if m == &Modifier::Around => textobject::TextObject::Around,
+            Some(m) => {
+                log::error!(
+                    "Got an evil text object with an unexpected evil modifier: {:?}",
+                    m
+                );
+                return None;
+            }
+            None => {
+                log::error!("Got an evil text object but no evil modifier");
+                return None;
+            }
+        };
+
+        // See also: select_textobject() in commands.rs
+
+        return Some(doc.selection(view.id).clone().transform(|range| {
+            return textobject::textobject_paragraph(
+                text,
+                range,
+                ts_modifier,
+                Self::context().count.unwrap_or(1),
+            );
+            // TODO: textobject_paragraph() selects the last newline,
+            // which causes a different behavior compared to vim
+        }));
+    }
+
+    fn get_treesitter_object_selection(cx: &mut Context, object: &str) -> Option<Selection> {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+        let loader = cx.editor.syn_loader.load();
+        // TODO: implement TryInto instead
+        let ts_modifier = match Self::context().modifier.as_ref() {
+            Some(m) if m == &Modifier::Inside => textobject::TextObject::Inside,
+            Some(m) if m == &Modifier::Around => textobject::TextObject::Around,
+            Some(m) => {
+                log::error!(
+                    "Got an evil text object with an unexpected evil modifier: {:?}",
+                    m
+                );
+                return None;
+            }
+            None => {
+                log::error!("Got an evil text object but no evil modifier");
+                return None;
+            }
+        };
+
+        // See also: select_textobject() in commands.rs
+
+        return Some(doc.selection(view.id).clone().transform(|range| {
+            let Some(syntax) = doc.syntax() else {
+                return range;
+            };
+
+            // return textobject::textobject_treesitter(
+            let range = textobject::textobject_treesitter(
+                text,
+                range,
+                ts_modifier,
+                object,
+                syntax,
+                &loader,
+                Self::context().count.unwrap_or(1),
+            );
+            log::info!("TS selection {} -> {:?}", object, range);
+            return range;
+            // TODO: textobject_paragraph() selects the last newline,
+            // which causes a different behavior compared to vim
+        }));
     }
 
     fn strip_trailing_line_break(text: &Rope, range: (usize, usize)) -> (usize, usize) {
