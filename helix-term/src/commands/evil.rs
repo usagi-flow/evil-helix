@@ -72,7 +72,7 @@ enum TextObject {
     // :h object-select
     Paragraph,
     Word,
-    Sentence,
+    // TODO: Sentence,
     SquareBrackets,
     RoundBrackets,
     CurlyBrackets,
@@ -80,9 +80,9 @@ enum TextObject {
     SingleQuotes,
     DoubleQuotes,
     Backticks,
-    SquareRoundBlock,
-    SquareCurlyBlock,
-    Tags,
+    // TODO: SquareRoundBlock,
+    // TODO: SquareCurlyBlock,
+    // TODO: Tags,
 }
 
 impl TryFrom<char> for TextObject {
@@ -103,7 +103,7 @@ impl TryFrom<char> for TextObject {
             // TODO: 'b' => Ok(Self::SquareRoundBlock),
             // TODO: 'B' => Ok(Self::SquareCurlyBlock),
             // TODO: 't' => Ok(Self::Tags),
-            't' => Ok(Self::Tags),
+            // TODO: 't' => Ok(Self::Tags),
             _ => Err(()),
         }
     }
@@ -270,13 +270,13 @@ impl EvilCommands {
                         TextObject::RoundBrackets => Self::get_surrounding_char_selection(cx, '('),
                         TextObject::CurlyBrackets => Self::get_surrounding_char_selection(cx, '{'),
                         TextObject::AngleBrackets => Self::get_surrounding_char_selection(cx, '<'),
-                        TextObject::Sentence => todo!(),
+                        // TODO: TextObject::Sentence => todo!(),
                         TextObject::SingleQuotes => Self::get_surrounding_char_selection(cx, '\''),
                         TextObject::DoubleQuotes => Self::get_surrounding_char_selection(cx, '"'),
                         TextObject::Backticks => Self::get_surrounding_char_selection(cx, '`'),
-                        TextObject::SquareRoundBlock => todo!(),
-                        TextObject::SquareCurlyBlock => todo!(),
-                        TextObject::Tags => Self::get_treesitter_object_selection(cx, "tag_name"), // TextObject::Tags => todo!(),
+                        // TODO: TextObject::SquareRoundBlock => todo!(),
+                        // TODO: TextObject::SquareCurlyBlock => todo!(),
+                        // TODO: TextObject::Tags => Self::get_treesitter_object_selection(cx, "tag"), // TextObject::Tags => todo!(),
                     };
                 } else if let Some(motion) = Self::context().motion.as_ref() {
                     log::trace!("Calculating selection using motion: {:?}", motion);
@@ -622,8 +622,7 @@ impl EvilCommands {
                 return range;
             };
 
-            // return textobject::textobject_treesitter(
-            let range = textobject::textobject_treesitter(
+            return textobject::textobject_treesitter(
                 text,
                 range,
                 ts_modifier,
@@ -632,10 +631,6 @@ impl EvilCommands {
                 &loader,
                 Self::context().count.unwrap_or(1),
             );
-            log::info!("TS selection {} -> {:?}", object, range);
-            return range;
-            // TODO: textobject_paragraph() selects the last newline,
-            // which causes a different behavior compared to vim
         }));
     }
 
