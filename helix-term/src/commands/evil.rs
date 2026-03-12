@@ -500,8 +500,16 @@ impl EvilCommands {
             // Handle the edge case of finding the line end on the last line:
             // We normally have to keep the EOL char(s) from being selected,
             // but if there is no empty line at the end, we shouldn't skip characters.
-            if end_line < text.len_lines() {
-                end = end.saturating_sub(1); // TODO: we're removing LF, but what about multiple EOL characters?
+            if end_line < text.len_lines() - 1 {
+                let final_chars = (
+                    text.char(end.saturating_sub(2)),
+                    text.char(end.saturating_sub(1)),
+                );
+                if final_chars.0 == '\r' && final_chars.1 == '\n' {
+                    end = end.saturating_sub(2);
+                } else if final_chars.1 == '\n' {
+                    end = end.saturating_sub(1);
+                }
             }
 
             return match motion {
