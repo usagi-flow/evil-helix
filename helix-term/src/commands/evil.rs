@@ -116,6 +116,7 @@ enum Motion {
     NextLongWordEnd,
     LineStart,
     LineEnd,
+    FileEnd,
 }
 
 impl TryFrom<char> for Motion {
@@ -129,6 +130,7 @@ impl TryFrom<char> for Motion {
             'B' => Ok(Self::PrevLongWordStart),
             '$' => Ok(Self::LineEnd),
             '0' => Ok(Self::LineStart),
+            'G' => Ok(Self::FileEnd),
             _ => Err(()),
         }
     }
@@ -292,6 +294,17 @@ impl EvilCommands {
                         }
                         Motion::LineStart | Motion::LineEnd => {
                             Self::get_partial_line_based_selection(cx, motion).ok()
+                        }
+                        Motion::FileEnd => {
+                            // `G` is a line-wise motion (like Vim's `dG`/`yG`/`cG`).
+                            // For a change command, exclude the final line break so an
+                            // empty line is left in place, mirroring the line-based case.
+                            Some(Self::get_file_end_selection(
+                                cx,
+                                !Self::context()
+                                    .command
+                                    .is_some_and(|command| command == Command::Change),
+                            ))
                         }
                     };
                 } else {
@@ -520,6 +533,37 @@ impl EvilCommands {
         });
 
         return Ok(selection);
+    }
+
+    /// Select line-wise from the cursor's line to the target line of the `G` motion.
+    /// Without a count this targets the last line of the file; with a count it
+    /// targets that (1-based) line, like Vim's `G`. The selection is clamped to
+    /// the document and may extend upwards if the target is above the cursor.
+    fn get_file_end_selection(cx: &mut Context, include_final_line_break: bool) -> Selection {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text();
+        let slice = text.slice(..);
+
+        let last_line = text.len_lines().saturating_sub(1);
+        let target_line = match Self::context().count {
+            Some(count) => count.saturating_sub(1).min(last_line),
+            None => last_line,
+        };
+
+        return doc.selection(view.id).clone().transform(|range| {
+            let cursor_line = range.cursor_line(slice);
+            let start_line = cursor_line.min(target_line);
+            let end_line = cursor_line.max(target_line);
+
+            let anchor = text.line_to_char(start_line);
+            let mut head = text.line_to_char((end_line + 1).min(text.len_lines()));
+
+            if !include_final_line_break {
+                (_, head) = Self::strip_trailing_line_break(text, (anchor, head));
+            }
+
+            Range::new(anchor, head)
+        });
     }
 
     fn get_full_line_based_selection(
