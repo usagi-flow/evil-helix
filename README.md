@@ -18,7 +18,7 @@ A soft fork of [Helix](https://helix-editor.com) which introduces Vim keybinding
 
 ```sh
 cd /opt
-sudo curl -Lo helix.tar.gz https://github.com/usagi-flow/evil-helix/releases/download/release-<VERSION>/helix-<ARCH>-<OS>.tar.gz
+sudo curl -Lo helix.tar.gz https://github.com/usagi-flow/evil-helix/releases/download/release-<VERSION>/evil-helix-<ARCH>-<OS>.tar.gz
 sudo tar -xf helix.tar.gz
 cd /usr/local/bin
 sudo ln -sv /opt/helix/hx .
