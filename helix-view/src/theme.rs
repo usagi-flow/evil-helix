@@ -357,8 +357,9 @@ fn build_theme_values(
         styles.insert(name.clone(), style);
         scopes.push(name);
         highlights.push(style);
-        .iter()
-        .enumerate()
+        // .iter()
+        // .enumerate();
+
         rainbow_length += 1;
     }
 
@@ -377,16 +378,6 @@ fn build_theme_values(
     (styles, scopes, highlights, rainbow_length, warnings)
 }
 
-fn default_rainbow() -> Vec<Style> {
-    vec![
-        Style::default().fg(Color::Red),
-        Style::default().fg(Color::Yellow),
-        Style::default().fg(Color::Green),
-        Style::default().fg(Color::Blue),
-        Style::default().fg(Color::Cyan),
-        Style::default().fg(Color::Magenta),
-    ]
-}
 impl Theme {
     /// To allow `Highlight` to represent arbitrary RGB colors without turning it into an enum,
     /// we interpret the last 256^3 numbers as RGB.
@@ -472,10 +463,6 @@ impl Theme {
                 .into_iter()
                 .all(|color| !matches!(color, Some(Color::Rgb(..))))
         })
-    }
-
-    pub fn rainbow_length(&self) -> usize {
-        self.rainbow_length
     }
 
     fn from_toml(value: Value) -> (Self, Vec<String>) {

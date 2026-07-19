@@ -13,6 +13,7 @@ use helix_view::{document::Mode, info::Info, input::KeyEvent};
 use indexmap::IndexMap;
 use macros::key;
 use serde::Deserialize;
+
 use std::{
     borrow::Cow,
     collections::{BTreeSet, HashMap},
@@ -20,11 +21,9 @@ use std::{
     sync::Arc,
 };
 
-pub use default::default;
 pub use default_evil::default_evil;
-use macros::key;
 
-#[derive(Debug, Clone, Default), Deserialize]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct KeyTrieNode {
     /// A label for keys coming under this node, like "Goto mode"
     #[serde(skip)]
