@@ -194,9 +194,6 @@ impl EvilCommands {
         doc.set_selection(
             view.id,
             doc.selection(view.id).clone().transform(|mut range| {
-                // TODO: when exiting insert mode after appending, we end up on the character _after_ the curson,
-                // while vim returns to the character _before_ the cursor.
-
                 match collapse_mode {
                     CollapseMode::Forward => {
                         let end = range.anchor.max(range.head);

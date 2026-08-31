@@ -675,6 +675,7 @@ impl MappableCommand {
         evil_goto_line_or_last_line, "Goto last line (evil)",
         evil_characterwise_select_mode, "Enter/exit characterwise select mode",
         evil_linewise_select_mode, "Enter/exit linewise select mode",
+        evil_normal_mode, "Exit insert mode, moving the cursor back like Vim (evil)",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
@@ -7325,6 +7326,27 @@ fn evil_append_mode(cx: &mut Context) {
 
     append_mode_same_line(cx);
     collapse_selection(cx);
+}
+
+/// Leave insert mode and move the cursor back onto the last edited character,
+/// like Vim (which steps the cursor left when leaving insert mode). The step is
+/// clamped to the line start, so it never crosses onto the previous line.
+fn evil_normal_mode(cx: &mut Context) {
+    normal_mode(cx);
+
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let cursor = range.cursor(text);
+        let line_start = text.line_to_char(text.char_to_line(cursor));
+        let pos = if cursor > line_start {
+            graphemes::prev_grapheme_boundary(text, cursor)
+        } else {
+            cursor
+        };
+        Range::point(pos)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn evil_goto_line_or_first_line(cx: &mut Context) {
