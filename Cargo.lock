@@ -402,6 +402,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "evil"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "crossterm",
+ "helix-core",
+ "helix-term",
+ "helix-view",
+ "tempfile",
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
 name = "faster-hex"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

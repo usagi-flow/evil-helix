@@ -1,0 +1,26 @@
+[package]
+name = "evil"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+# This crate contains full-application integration tests for evil-helix.
+# Tests drive the real Application and compositor in-process, using Helix's
+# TestBackend to inspect the rendered terminal screen.
+#
+# Run with:
+#   cargo test -p evil        (from workspace root)
+#   cargo test                (from this directory)
+
+[features]
+integration = []
+
+[dev-dependencies]
+anyhow = "1"
+crossterm = "0.28"
+helix-core = { path = "../helix-core" }
+helix-term = { path = "../helix-term", features = ["integration"] }
+helix-view = { path = "../helix-view", features = ["term"] }
+tempfile = { workspace = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio-stream = "0.1"

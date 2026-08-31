@@ -247,6 +247,11 @@ impl Application {
         Ok(app)
     }
 
+    #[cfg(feature = "integration")]
+    pub fn screen(&self) -> &tui::buffer::Buffer {
+        self.terminal.backend().buffer()
+    }
+
     async fn render(&mut self) {
         if self.compositor.full_redraw {
             self.terminal.clear().expect("Cannot clear the terminal");
