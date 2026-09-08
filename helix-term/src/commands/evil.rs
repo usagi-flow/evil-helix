@@ -852,6 +852,24 @@ impl EvilCommands {
                     return;
                 }
 
+                // Is the command being executed with a find-char motion (f/F/t/T)?
+                // These consume one more key (the target character), so we hand off
+                // to `find_char_command`, which extends the selection to that character
+                // and then applies the command.
+                let find = match c {
+                    'f' => Some((Direction::Forward, true)),
+                    'F' => Some((Direction::Backward, true)),
+                    't' => Some((Direction::Forward, false)),
+                    'T' => Some((Direction::Backward, false)),
+                    _ => None,
+                };
+                if let Some((direction, inclusive)) = find {
+                    log::trace!("Key callback: Detected find-char motion key '{}'", c);
+
+                    Self::find_char_command(cx, direction, inclusive, active_command, set_mode);
+                    return;
+                }
+
                 // Is the command being executed with a motion key?
                 // Check this after the count check, because "0" could imply increasing the count,
                 // and if it doesn't, it's probably a motion key.
@@ -898,6 +916,73 @@ impl EvilCommands {
         let selection = Self::get_character_based_selection(cx);
         Self::delete_selection(cx, &selection, false);
         exit_select_mode(cx);
+    }
+
+    /// Execute a command (`d`/`c`/`y`) with a find-char motion (`f`/`F`/`t`/`T`).
+    /// This waits for the target character, extends the selection from the cursor
+    /// to (or up to) it, and then applies the command. If the character isn't found
+    /// (or the input is cancelled), the command is aborted, like Vim.
+    fn find_char_command(
+        cx: &mut Context,
+        direction: Direction,
+        inclusive: bool,
+        command: Command,
+        set_mode: Option<SetMode>,
+    ) {
+        // Forward the evil count so e.g. `d2f)` repeats the find: the base
+        // `find_char` reads `cx.count()`, which the pending-command flow doesn't set.
+        if let Some(count) = Self::context().count.and_then(std::num::NonZeroUsize::new) {
+            cx.count = Some(count);
+        }
+
+        let selection_before = {
+            let (view, doc) = current!(cx.editor);
+            doc.selection(view.id).clone()
+        };
+
+        // `find_char` extends the current selection to the target character on the
+        // next key; we wrap the callback it installs to apply the command afterwards.
+        crate::commands::find_char(cx, direction, inclusive, true);
+        let Some(inner_callback) = cx.on_next_key_callback.take() else {
+            log::warn!("find_char did not set a key callback");
+            Self::context_mut().reset();
+            return;
+        };
+
+        cx.on_next_key(move |cx, event| {
+            inner_callback.0(cx, event);
+
+            let selection = {
+                let (view, doc) = current!(cx.editor);
+                doc.selection(view.id).clone()
+            };
+
+            // An unchanged selection means the target wasn't found or the input was
+            // cancelled (e.g. Escape): abort the command instead of acting on nothing.
+            // This also covers `t`/`T` when the target char is already adjacent (the
+            // till-search skips it and finds nothing), which is a no-op in Vim too.
+            if selection == selection_before {
+                Self::context_mut().reset();
+                return;
+            }
+
+            match command {
+                Command::Yank => {
+                    Self::yank_selection(cx, &selection, true);
+                    // Like Vim, leave the cursor at the start of the yanked text
+                    // rather than at the end where the find motion landed.
+                    Self::collapse_selections(cx, CollapseMode::Backward);
+                }
+                Command::Change | Command::Delete => Self::delete_selection(cx, &selection, true),
+            }
+
+            match set_mode {
+                Some(SetMode::Insert) => enter_insert_mode(cx),
+                _ => exit_select_mode(cx),
+            }
+
+            Self::context_mut().reset();
+        });
     }
 
     pub fn find_char<F>(cx: &mut Context, base_fn: F, direction: Direction, inclusive: bool)
