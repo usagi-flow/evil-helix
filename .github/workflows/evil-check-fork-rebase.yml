@@ -2,7 +2,7 @@ name: "evil-helix - check fork rebase"
 
 on:
   push:
-    branches: [main, feat-ci-check-fork-rebase] # TODO: remove feature branch
+    branches: [main]
   schedule:
   - cron: "00 20 * * *"
   workflow_dispatch:
