@@ -1,0 +1,65 @@
+name: "evil-helix - check fork rebase"
+
+on:
+  push:
+    branches: [main]
+  schedule:
+  - cron: "00 20 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-synchronization
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-26.04
+    steps:
+
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+
+    - name: fetch upstream
+      run: |
+        git remote add upstream https://github.com/helix-editor/helix.git
+        git fetch upstream
+
+    - name: rebase
+      shell: bash
+      env:
+        GIT_COMMITTER_NAME: dummy
+        GIT_COMMITTER_EMAIL: dummy@email
+        GIT_EDITOR: "true"
+      run: |
+        fork_head=$(git rev-parse HEAD)
+
+        restore_readme() {
+          if git cat-file -e "$fork_head:README.md" 2>/dev/null; then
+            git restore --source="$fork_head" --staged --worktree -- README.md
+          else
+            git rm --force --ignore-unmatch -- README.md
+          fi
+        }
+
+        if ! git rebase upstream/master; then
+          while true; do
+            mapfile -d '' -t conflicts < <(git diff --name-only --diff-filter=U -z)
+            if [[ ${#conflicts[@]} -ne 1 || "${conflicts[0]}" != README.md ]]; then
+              echo "::error::Rebase failed"
+              git status --short
+              exit 1
+            fi
+
+            restore_readme
+            if git rebase --continue; then
+              break
+            fi
+          done
+        fi
+
+        restore_readme
+        git status --short
