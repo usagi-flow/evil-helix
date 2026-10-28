@@ -29,10 +29,37 @@ jobs:
         git fetch upstream
 
     - name: rebase
+      shell: bash
       env:
         GIT_COMMITTER_NAME: dummy
         GIT_COMMITTER_EMAIL: dummy@email
+        GIT_EDITOR: "true"
       run: |
-        git fetch upstream
-        git rebase -x 'echo "-> Restoring" && git checkout --theirs -- README.md && echo "-> Adding" && git add README.md && echo "Restored fork-specific README.md" || echo "No further action needed"; git status' upstream/master
-        # git rebase -x 'echo "-> Restoring" && git checkout --theirs -- README.md && echo "-> Adding" && git add README.md && echo "-> Continuing" && git rebase --continue && echo "Restored fork-specific README.md" || echo "No further action needed"; git status' upstream/master
+        fork_head=$(git rev-parse HEAD)
+
+        restore_readme() {
+          if git cat-file -e "$fork_head:README.md" 2>/dev/null; then
+            git restore --source="$fork_head" --staged --worktree -- README.md
+          else
+            git rm --force --ignore-unmatch -- README.md
+          fi
+        }
+
+        if ! git rebase upstream/master; then
+          while true; do
+            mapfile -d '' -t conflicts < <(git diff --name-only --diff-filter=U -z)
+            if [[ ${#conflicts[@]} -ne 1 || "${conflicts[0]}" != README.md ]]; then
+              echo "::error::Rebase failed"
+              git status --short
+              exit 1
+            fi
+
+            restore_readme
+            if git rebase --continue; then
+              break
+            fi
+          done
+        fi
+
+        restore_readme
+        git status --short
